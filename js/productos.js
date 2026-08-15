@@ -1,8 +1,10 @@
-// RestoApp - Creación de productos (Ejercicio 2: módulo IIFE)
+// RestoApp - Creación de productos (Ejercicio 2/3)
+// Escribe con el SDK de Firebase (no fetch crudo) para que la escritura
+// vaya autenticada con el usuario de Firebase Auth, tal como lo exigen
+// las reglas de Realtime Database (".write": "auth != null").
 (function () {
     'use strict';
 
-    // Crear producto: POST directo a Realtime DB (mala práctica: sin sanitizar)
     function crearProducto() {
         var msg = document.getElementById('prodMsg');
 
@@ -18,10 +20,7 @@
             return;
         }
 
-        var url = 'https://restoapp-clase-default-rtdb.firebaseio.com/menu.json';
-        var body = { name: name, price: price };
-        fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-            .then(function (res) { if (!res.ok) throw new Error('Error al crear'); return res.json(); })
+        firebase.database().ref('menu').push({ name: name, price: price })
             .then(function () {
                 msg.innerText = 'Producto creado';
                 document.getElementById('newName').value = '';

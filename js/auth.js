@@ -1,29 +1,20 @@
-// RestoApp - Autenticación (Ejercicio 2: módulo IIFE, sin variables globales sueltas)
-// Expone un único namespace (window.RestoAuth) en vez de funciones/variables sueltas.
+// RestoApp - Autenticación con Firebase Auth (Ejercicio 3)
+// Reemplaza las credenciales hardcodeadas por autenticación real:
+// la validación ocurre en los servidores de Firebase, no comparando
+// strings en el cliente.
 (function () {
     'use strict';
 
-    // TODO(Ejercicio 3): credenciales hardcodeadas en el cliente. Sacarlas de aquí
-    // y usar Firebase Auth o un backend mínimo.
-    var ADMIN_USER = 'admin';
-    var ADMIN_PASS = 'admin';
-
     function isLogged() {
-        // TODO(Ejercicio 3): sessionStorage es un parche para que la sesión
-        // sobreviva al cambiar de página en la MPA; no es autenticación real.
-        return sessionStorage.getItem('isLogged') === 'true';
+        return !!firebase.auth().currentUser;
     }
 
-    function login(user, pass) {
-        if (user === ADMIN_USER && pass === ADMIN_PASS) {
-            sessionStorage.setItem('isLogged', 'true');
-            return true;
-        }
-        return false;
+    function login(email, password) {
+        return firebase.auth().signInWithEmailAndPassword(email, password);
     }
 
     function logout() {
-        sessionStorage.removeItem('isLogged');
+        return firebase.auth().signOut();
     }
 
     function initLoginPage() {
@@ -31,9 +22,9 @@
         var logoutBtn = document.getElementById('logoutBtn');
         var authMsg = document.getElementById('authMsg');
 
-        function updateUI() {
-            if (isLogged()) {
-                authMsg.innerText = 'Autenticado';
+        function updateUI(user) {
+            if (user) {
+                authMsg.innerText = 'Autenticado como ' + user.email;
                 loginBtn.classList.add('hidden');
                 logoutBtn.classList.remove('hidden');
             } else {
@@ -44,36 +35,41 @@
         }
 
         loginBtn.addEventListener('click', function () {
-            var user = document.getElementById('user').value;
+            var email = document.getElementById('email').value;
             var pass = document.getElementById('pass').value;
-            if (login(user, pass)) {
-                updateUI();
-                window.location.href = 'admin.html';
-            } else {
-                authMsg.innerText = 'Credenciales inválidas';
-            }
+            authMsg.innerText = 'Verificando...';
+            login(email, pass)
+                .then(function () {
+                    window.location.href = 'admin.html';
+                })
+                .catch(function (err) {
+                    console.error('Login error:', err);
+                    authMsg.innerText = 'Credenciales inválidas';
+                });
         });
 
         logoutBtn.addEventListener('click', function () {
             logout();
-            updateUI();
         });
 
-        updateUI();
+        firebase.auth().onAuthStateChanged(updateUI);
     }
 
     function initAdminGuard() {
-        if (!isLogged()) {
-            window.location.href = 'login.html';
-            return;
-        }
         var logoutBtn = document.getElementById('logoutBtn');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', function () {
-                logout();
-                window.location.href = 'login.html';
+                logout().then(function () {
+                    window.location.href = 'login.html';
+                });
             });
         }
+
+        firebase.auth().onAuthStateChanged(function (user) {
+            if (!user) {
+                window.location.href = 'login.html';
+            }
+        });
     }
 
     document.addEventListener('DOMContentLoaded', function () {
