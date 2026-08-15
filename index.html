@@ -61,7 +61,7 @@
 
     // Cargar menú desde Realtime Database
     function cargarMenu() {
-        var url = "https://stock-flow-2e23e-default-rtdb.firebaseio.com/menu.json";
+        var url = "https://restoapp-clase-default-rtdb.firebaseio.com/menu.json";
         fetch(url)
             .then(function(res){ if(!res.ok) throw new Error('Network response was not ok'); return res.json(); })
             .then(function(data){
@@ -190,7 +190,7 @@
             document.getElementById('prodMsg').innerText = 'Datos inválidos';
             return;
         }
-        var url = 'https://stock-flow-2e23e-default-rtdb.firebaseio.com/menu.json';
+        var url = 'https://restoapp-clase-default-rtdb.firebaseio.com/menu.json';
         var body = { name: name, price: price };
         fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
             .then(function(res){ if(!res.ok) throw new Error('Error al crear'); return res.json(); })

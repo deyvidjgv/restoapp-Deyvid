@@ -3,7 +3,7 @@ RestoApp - Taller de Refactorización y Uso de IA
 Resumen
 - Proyecto base (legacy) para que estudiantes practiquen refactorización: [index.html](index.html).
 - Contiene malas prácticas intencionales (variables globales, autenticación en cliente, lógica monolítica) pero es funcional y conectado a Firebase Realtime Database en:
-  https://stock-flow-2e23e-default-rtdb.firebaseio.com/menu.json
+  https://restoapp-clase-default-rtdb.firebaseio.com/menu.json
 
 Objetivo del taller
 - Transformar esta base en una MPA (Multiple Page Application) bien estructurada y modular.
