@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>RestoApp - Administración</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div class="contenedor-principal">
+    <h2>RestoApp - Administración</h2>
+    <p><a href="index.html">&larr; Inicio</a> · <button onclick="logout()">Cerrar sesión</button></p>
+
+    <!-- Formulario para crear productos (Mala práctica: sin validación segura) -->
+    <div id="productForm" class="product-form">
+        <h3>Crear producto (Mala práctica: sin validación segura)</h3>
+        Nombre: <input type="text" id="newName"> Precio: <input type="number" id="newPrice">
+        <button onclick="crearProducto()">Crear</button>
+        <div id="prodMsg" class="prod-msg"></div>
+    </div>
+</div>
+
+<script>
+    // TODO(Ejercicio 3): sessionStorage es un parche temporal para que la sesión
+    // sobreviva al cambiar de página en la MPA; no es autenticación real.
+    function isLogged() {
+        return sessionStorage.getItem('isLogged') === 'true';
+    }
+
+    function logout() {
+        sessionStorage.removeItem('isLogged');
+        window.location.href = 'login.html';
+    }
+
+    // Crear producto: POST directo a Realtime DB (mala práctica: sin auth, sin sanitizar)
+    function crearProducto() {
+        if (!isLogged()) {
+            document.getElementById('prodMsg').innerText = 'No autorizado';
+            return;
+        }
+        var name = document.getElementById('newName').value;
+        var price = Number(document.getElementById('newPrice').value) || 0;
+        if (name === '' || price <= 0) {
+            document.getElementById('prodMsg').innerText = 'Datos inválidos';
+            return;
+        }
+        var url = 'https://restoapp-clase-default-rtdb.firebaseio.com/menu.json';
+        var body = { name: name, price: price };
+        fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
+            .then(function(res){ if(!res.ok) throw new Error('Error al crear'); return res.json(); })
+            .then(function(data){
+                document.getElementById('prodMsg').innerText = 'Producto creado';
+                document.getElementById('newName').value = '';
+                document.getElementById('newPrice').value = '';
+            })
+            .catch(function(err){
+                console.error('Crear producto error:', err);
+                document.getElementById('prodMsg').innerText = 'Error creando producto';
+            });
+    }
+
+    window.onload = function(){
+        if (!isLogged()) {
+            window.location.href = 'login.html';
+        }
+    };
+</script>
+
+</body>
+</html>
