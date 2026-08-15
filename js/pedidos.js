@@ -1,51 +1,72 @@
-// RestoApp - Toma de pedidos (Ejercicio 2: módulo IIFE / Ejercicio 4: validaciones)
+// RestoApp - Toma de pedidos
+// Ejercicio 5: lógica de negocio (validar/calcular/formatear) separada
+// de la capa DOM (leer formulario, mostrar resultado, limpiar campos).
 (function () {
     'use strict';
 
-    // --- FUNCIÓN MONOLÍTICA (Complejidad ciclomática alta) ---
-    // TODO(Ejercicio 5): separar cálculo de impuestos, validación y actualización del DOM.
-    function tomarTodo() {
-        var resultado = document.getElementById('res');
+    var IVA_RATE = 0.19;
 
-        // Nombres de variables crípticos (a, b, p)
-        let a = document.getElementById('a').value;
-        let b = document.getElementById('b').value;
-        let p = document.getElementById('p').value;
+    // --- Lógica de negocio (funciones puras, sin tocar el DOM) ---
 
-        b = Number(b);
-        p = Number(p);
+    function validarPedido(plato, cantidad, precioUnitario) {
+        if (!plato) return 'Selecciona un plato del menú.';
+        if (!cantidad || cantidad <= 0) return 'La cantidad debe ser mayor a 0.';
+        if (!precioUnitario || precioUnitario <= 0) return 'El precio unitario debe ser mayor a 0.';
+        return null;
+    }
 
-        // Validación con mensajes específicos (Ejercicio 4)
-        if (a === "") {
-            mostrarError(resultado, 'Selecciona un plato del menú.');
-            return;
-        }
-        if (!b || b <= 0) {
-            mostrarError(resultado, 'La cantidad debe ser mayor a 0.');
-            return;
-        }
-        if (!p || p <= 0) {
-            mostrarError(resultado, 'El precio unitario debe ser mayor a 0.');
-            return;
-        }
+    function calcularPedido(cantidad, precioUnitario) {
+        var subtotal = cantidad * precioUnitario;
+        var iva = subtotal * IVA_RATE;
+        var total = subtotal + iva;
+        return { subtotal: subtotal, iva: iva, total: total };
+    }
 
-        let sub = b * p;
-        // IVA hardcodeado 19%
-        let tax = sub * 0.19;
-        let total = sub + tax;
+    function formatearResultado(plato, calculo) {
+        return "Pedido: " + plato +
+            " | Subtotal: $" + calculo.subtotal.toFixed(2) +
+            " | IVA: $" + calculo.iva.toFixed(2) +
+            " | Total: $" + calculo.total.toFixed(2);
+    }
 
-        resultado.classList.remove('error');
-        resultado.innerHTML = "Pedido: " + a + " | Subtotal: $" + sub.toFixed(2) + " | IVA: $" + tax.toFixed(2) + " | Total: $" + total.toFixed(2);
+    // --- Capa DOM ---
 
-        // Limpieza manual del formulario
+    function leerFormulario() {
+        return {
+            plato: document.getElementById('a').value,
+            cantidad: Number(document.getElementById('b').value),
+            precioUnitario: Number(document.getElementById('p').value)
+        };
+    }
+
+    function limpiarFormulario() {
         document.getElementById('a').value = "";
         document.getElementById('b').value = "";
         document.getElementById('p').value = "";
     }
 
-    function mostrarError(resultado, mensaje) {
-        resultado.classList.add('error');
+    function mostrarResultado(mensaje, esError) {
+        var resultado = document.getElementById('res');
+        resultado.classList.toggle('error', !!esError);
         resultado.innerText = mensaje;
+    }
+
+    function tomarTodo() {
+        try {
+            var datos = leerFormulario();
+            var error = validarPedido(datos.plato, datos.cantidad, datos.precioUnitario);
+            if (error) {
+                mostrarResultado(error, true);
+                return;
+            }
+
+            var calculo = calcularPedido(datos.cantidad, datos.precioUnitario);
+            mostrarResultado(formatearResultado(datos.plato, calculo), false);
+            limpiarFormulario();
+        } catch (err) {
+            console.error('Error al procesar el pedido:', err);
+            mostrarResultado('Ocurrió un error inesperado al procesar el pedido.', true);
+        }
     }
 
     document.addEventListener('DOMContentLoaded', function () {
