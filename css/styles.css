@@ -27,10 +27,14 @@
 
 * { box-sizing: border-box; }
 
+html { font-size: 16px; }
+
 body {
     font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
     margin: 0;
     min-height: 100vh;
+    font-size: 1rem;
+    line-height: 1.5;
     color: var(--text);
     background:
         radial-gradient(1px 1px at 12% 18%, var(--star) 100%, transparent 100%),
@@ -51,6 +55,7 @@ body {
 
 h2 {
     color: var(--text);
+    font-size: 1.6rem;
     letter-spacing: 0.04em;
     text-shadow: 0 0 18px rgba(159, 176, 221, 0.45);
     margin-top: 0;
@@ -58,10 +63,11 @@ h2 {
 
 h3 {
     color: var(--text-dim);
+    font-size: 1.1rem;
     letter-spacing: 0.02em;
 }
 
-p { color: var(--text-dim); }
+p { color: var(--text-dim); font-size: 0.95rem; }
 
 /* --- Paneles (tarjetas tipo "cápsula espacial") --- */
 #form, .auth-box, .product-form, .resultado {
@@ -72,18 +78,35 @@ p { color: var(--text-dim); }
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
 }
 
-.item { margin-bottom: 14px; color: var(--text-dim); }
+.item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+}
+
+.item label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
 
 /* --- Inputs y select --- */
 input, select {
+    width: 100%;
     background: var(--bg-deep);
     color: var(--text);
     border: 1px solid var(--accent-glow);
     border-radius: 8px;
-    padding: 6px 10px;
-    font-size: 14px;
+    padding: 9px 12px;
+    font-size: 0.95rem;
+    font-family: inherit;
     outline: none;
 }
+
+input::placeholder { color: var(--text-dim); opacity: 0.55; }
 
 input:focus, select:focus {
     border-color: var(--ring-light);
@@ -96,8 +119,10 @@ button {
     color: var(--bg-deep);
     border: none;
     border-radius: 8px;
-    padding: 8px 16px;
+    padding: 10px 18px;
+    font-size: 0.95rem;
     font-weight: 600;
+    font-family: inherit;
     cursor: pointer;
     transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
@@ -107,7 +132,24 @@ button:hover {
     transform: translateY(-1px);
 }
 
-#btn { margin-top: 6px; }
+button + button { margin-left: 8px; }
+
+/* Acciones secundarias (cerrar sesión, crear cuenta) con menor énfasis que la acción primaria */
+button.btn-secondary {
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid rgba(238, 243, 255, 0.3);
+    font-weight: 500;
+}
+
+button.btn-secondary:hover {
+    box-shadow: none;
+    border-color: var(--ring-light);
+    color: var(--text);
+    transform: none;
+}
+
+#btn { margin-top: 6px; width: 100%; }
 
 .resultado { margin-top: 20px; font-weight: bold; color: var(--text); }
 .resultado.error { color: var(--danger); }

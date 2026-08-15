@@ -10,12 +10,19 @@
 
 <div class="contenedor-principal">
     <h2>RestoApp - Administración</h2>
-    <p class="back-link"><a href="index.html">&larr; Inicio</a> &middot; <button id="logoutBtn">Cerrar sesión</button></p>
+    <p class="back-link"><a href="index.html">&larr; Inicio</a> &middot; <button id="logoutBtn" class="btn-secondary">Cerrar sesión</button></p>
 
     <!-- Formulario para crear productos (Mala práctica: sin validación segura) -->
     <div id="productForm" class="product-form">
         <h3>Crear producto (Mala práctica: sin validación segura)</h3>
-        Nombre: <input type="text" id="newName"> Precio: <input type="number" id="newPrice">
+        <div class="item">
+            <label for="newName">Nombre</label>
+            <input type="text" id="newName" placeholder="Ej: Bandeja Paisa">
+        </div>
+        <div class="item">
+            <label for="newPrice">Precio ($)</label>
+            <input type="number" id="newPrice" placeholder="Ej: 25000" min="0">
+        </div>
         <button id="crearProductoBtn">Crear</button>
         <div id="prodMsg" class="prod-msg"></div>
     </div>
