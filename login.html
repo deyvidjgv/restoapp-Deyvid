@@ -6,7 +6,7 @@
     <link rel="icon" type="image/png" href="img/favicon.png">
     <link rel="stylesheet" href="css/styles.css">
 </head>
-<body>
+<body data-page="login">
 
 <div class="contenedor-principal">
     <h2>RestoApp - Acceso</h2>
@@ -15,58 +15,13 @@
     <div id="auth" class="auth-box">
         <h3>Acceso al sistema</h3>
         Usuario: <input type="text" id="user"> Contraseña: <input type="password" id="pass">
-        <button id="loginBtn" onclick="login()">Ingresar</button>
-        <button id="logoutBtn" onclick="logout()" class="hidden">Cerrar sesión</button>
+        <button id="loginBtn">Ingresar</button>
+        <button id="logoutBtn" class="hidden">Cerrar sesión</button>
         <div id="authMsg" class="auth-msg"></div>
     </div>
 </div>
 
-<script>
-    // --- Autenticación muy insegura (para práctica de refactor) ---
-    // TODO(Ejercicio 3): sacar credenciales del cliente y usar Firebase Auth o backend.
-    // Credenciales hardcodeadas (NO HACER ESTO en producción)
-    var ADMIN_USER = 'admin';
-    var ADMIN_PASS = 'admin';
-
-    // TODO(Ejercicio 3): sessionStorage es un parche temporal para que la sesión
-    // sobreviva al cambiar de página en la MPA; no es autenticación real.
-    function isLogged() {
-        return sessionStorage.getItem('isLogged') === 'true';
-    }
-
-    function updateAuthUI() {
-        if (isLogged()) {
-            document.getElementById('authMsg').innerText = 'Autenticado';
-            document.getElementById('loginBtn').classList.add('hidden');
-            document.getElementById('logoutBtn').classList.remove('hidden');
-        } else {
-            document.getElementById('authMsg').innerText = '';
-            document.getElementById('loginBtn').classList.remove('hidden');
-            document.getElementById('logoutBtn').classList.add('hidden');
-        }
-    }
-
-    function login() {
-        var u = document.getElementById('user').value;
-        var p = document.getElementById('pass').value;
-        if (u === ADMIN_USER && p === ADMIN_PASS) {
-            sessionStorage.setItem('isLogged', 'true');
-            updateAuthUI();
-            window.location.href = 'admin.html';
-        } else {
-            document.getElementById('authMsg').innerText = 'Credenciales inválidas';
-        }
-    }
-
-    function logout() {
-        sessionStorage.removeItem('isLogged');
-        updateAuthUI();
-    }
-
-    window.onload = function(){
-        updateAuthUI();
-    };
-</script>
+<script src="js/auth.js"></script>
 
 </body>
 </html>

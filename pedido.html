@@ -6,7 +6,7 @@
     <link rel="icon" type="image/png" href="img/favicon.png">
     <link rel="stylesheet" href="css/styles.css">
 </head>
-<body>
+<body data-page="pedido">
 
 <div class="contenedor-principal">
     <h2>RestoApp - Mesero V1.0</h2>
@@ -25,110 +25,14 @@
         <div class="item">
             Precio Unitario ($): <input type="number" id="p">
         </div>
-        <button id="btn" onclick="tomarTodo()">PROCESAR TODO</button>
+        <button id="btn">PROCESAR TODO</button>
     </div>
 
     <div id="res" class="resultado"></div>
 </div>
 
-<script>
-    // TODO(Ejercicio 2): variables globales sin uso, quedan de la base legacy original.
-    var items = [];
-    var total_global = 0;
-    var menuData = {};
-
-    // Cargar menú desde Realtime Database
-    function cargarMenu() {
-        var url = "https://restoapp-clase-default-rtdb.firebaseio.com/menu.json";
-        fetch(url)
-            .then(function(res){ if(!res.ok) throw new Error('Network response was not ok'); return res.json(); })
-            .then(function(data){
-                menuData = {};
-                var select = document.getElementById('a');
-                select.innerHTML = '<option value="">--Selecciona plato--</option>';
-                if (Array.isArray(data)) {
-                    data.forEach(function(item, idx){
-                        var id = item.id || idx;
-                        var name = item.name || ('Plato ' + id);
-                        var price = item.price || item.precio || 0;
-                        menuData[id] = price;
-                        var opt = document.createElement('option');
-                        opt.value = id;
-                        opt.text = name + ' ($' + price + ')';
-                        select.appendChild(opt);
-                    });
-                } else if (typeof data === 'object' && data !== null) {
-                    Object.keys(data).forEach(function(key){
-                        var item = data[key] || {};
-                        var name = item.name || key;
-                        var price = item.price || item.precio || 0;
-                        menuData[key] = price;
-                        var opt = document.createElement('option');
-                        opt.value = key;
-                        opt.text = name + ' ($' + price + ')';
-                        select.appendChild(opt);
-                    });
-                }
-            })
-            .catch(function(err){
-                console.error('Error cargando menu:', err);
-                var select = document.getElementById('a');
-                select.innerHTML = '<option value="">--Error cargando menú--</option>';
-            });
-    }
-
-    // Autocompletar precio al seleccionar plato
-    document.addEventListener('change', function(e){
-        if (e.target && e.target.id === 'a') {
-            var val = e.target.value;
-            if (menuData && menuData[val] !== undefined) {
-                document.getElementById('p').value = menuData[val];
-            }
-        }
-    });
-
-    // --- FUNCIÓN MONOLÍTICA (Complejidad ciclomática alta) ---
-    function tomarTodo() {
-        // Nombres de variables crípticos (a, b, p)
-        let a = document.getElementById('a').value;
-        let b = document.getElementById('b').value;
-        let p = document.getElementById('p').value;
-
-        // Conversión lax
-        b = Number(b);
-        p = Number(p);
-
-        // Validación sencilla
-        if (a != "" && b > 0) {
-            let sub = b * p;
-            // IVA hardcodeado 19%
-            let tax = sub * 0.19;
-            let total = sub + tax;
-
-            document.getElementById('res').innerHTML = "Pedido: " + a + " | Subtotal: $" + sub.toFixed(2) + " | IVA: $" + tax.toFixed(2) + " | Total: $" + total.toFixed(2);
-
-            // Limpieza manual del formulario
-            document.getElementById('a').value = "";
-            document.getElementById('b').value = "";
-            document.getElementById('p').value = "";
-        } else {
-            alert("Error en datos");
-        }
-    }
-
-    // --- CÓDIGO MUERTO (Función que nunca se llama) ---
-    // TODO(Ejercicio 4): eliminar, no se usa en ningún lugar.
-    function funcionObsoletaCalculoAnterior(x, y) {
-        let res = x / y;
-        console.log("Calculando algo que ya no usamos...");
-        return res;
-    }
-
-    // Iniciar carga de menú
-    window.onload = function(){
-        cargarMenu();
-    };
-</script>
+<script src="js/menu.js"></script>
+<script src="js/pedidos.js"></script>
 
 </body>
 </html>
