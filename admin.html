@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <title>RestoApp - Administración</title>
+    <link rel="icon" type="image/png" href="img/favicon.png">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
 
 <div class="contenedor-principal">
     <h2>RestoApp - Administración</h2>
-    <p><a href="index.html">&larr; Inicio</a> · <button onclick="logout()">Cerrar sesión</button></p>
+    <p class="back-link"><a href="index.html">&larr; Inicio</a> &middot; <button onclick="logout()">Cerrar sesión</button></p>
 
     <!-- Formulario para crear productos (Mala práctica: sin validación segura) -->
     <div id="productForm" class="product-form">

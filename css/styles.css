@@ -1,24 +1,149 @@
-/* RestoApp - Estilos unificados (Ejercicio 1: MPA) */
-body { font-family: sans-serif; }
+/* RestoApp - Tema "Restaurante Espacial" (Ejercicio 1: MPA) */
 
-.contenedor-principal { width: 400px; margin: auto; padding-top: 50px; }
+:root {
+    --bg-deep: #050a1c;
+    --bg-mid: #0a1230;
+    --bg-light: #16244a;
+
+    --star: #dbe6ff;
+    --star-dim: #aebdea;
+
+    --accent-glow: #3a5faf;
+    --accent-glow-dark: #1a2c66;
+
+    --ring-light: #eef3ff;
+    --ring-mid: #c7d4f2;
+    --ring-dark: #9fb0dd;
+
+    --panel: #1c2b5c;
+    --panel-dark: #0d1638;
+
+    --text: #eef3ff;
+    --text-dim: #b9c6ec;
+
+    --danger: #ff6b81;
+    --success: #6ee7c8;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    margin: 0;
+    min-height: 100vh;
+    color: var(--text);
+    background:
+        radial-gradient(1px 1px at 12% 18%, var(--star) 100%, transparent 100%),
+        radial-gradient(1px 1px at 78% 12%, var(--star-dim) 100%, transparent 100%),
+        radial-gradient(1px 1px at 30% 65%, var(--star) 100%, transparent 100%),
+        radial-gradient(1px 1px at 88% 55%, var(--star-dim) 100%, transparent 100%),
+        radial-gradient(1px 1px at 55% 82%, var(--star) 100%, transparent 100%),
+        radial-gradient(1px 1px at 6% 90%, var(--star-dim) 100%, transparent 100%),
+        radial-gradient(circle at 30% 20%, var(--bg-light) 0%, var(--bg-mid) 45%, var(--bg-deep) 100%);
+    background-attachment: fixed;
+}
+
+.contenedor-principal {
+    width: 420px;
+    margin: auto;
+    padding: 40px 32px;
+}
+
+h2 {
+    color: var(--text);
+    letter-spacing: 0.04em;
+    text-shadow: 0 0 18px rgba(159, 176, 221, 0.45);
+    margin-top: 0;
+}
+
+h3 {
+    color: var(--text-dim);
+    letter-spacing: 0.02em;
+}
+
+p { color: var(--text-dim); }
 
 /* TODO(Ejercicio 4): clase muerta, no se usa en ningún HTML. Eliminar en la limpieza final. */
 .clase_redundante_que_no_se_usa { color: transparent; display: none; }
 
-#form { border: 1px solid #000; padding: 20px; }
-.item { margin-bottom: 10px; }
-#btn { background-color: green; color: white; padding: 10px; cursor: pointer; }
+/* --- Paneles (tarjetas tipo "cápsula espacial") --- */
+#form, .auth-box, .product-form, .resultado {
+    background: linear-gradient(160deg, var(--panel) 0%, var(--panel-dark) 100%);
+    border: 1px solid rgba(238, 243, 255, 0.12);
+    border-radius: 18px;
+    padding: 20px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
 
-.resultado { margin-top: 20px; font-weight: bold; }
+.item { margin-bottom: 14px; color: var(--text-dim); }
 
-.auth-box { margin-top: 20px; border: 1px dashed #ccc; padding: 10px; }
-.auth-msg { margin-top: 8px; color: darkred; }
+/* --- Inputs y select --- */
+input, select {
+    background: var(--bg-deep);
+    color: var(--text);
+    border: 1px solid var(--accent-glow);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 14px;
+    outline: none;
+}
 
-.product-form { margin-top: 20px; border: 1px solid #ddd; padding: 10px; }
-.prod-msg { margin-top: 8px; color: green; }
+input:focus, select:focus {
+    border-color: var(--ring-light);
+    box-shadow: 0 0 10px rgba(238, 243, 255, 0.35);
+}
 
-.nav-links { margin-top: 20px; }
-.nav-links a { display: block; margin-bottom: 10px; }
+/* --- Botones (anillo del planeta como referencia) --- */
+button {
+    background: linear-gradient(180deg, var(--ring-light) 0%, var(--ring-mid) 55%, var(--ring-dark) 100%);
+    color: var(--bg-deep);
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+button:hover {
+    box-shadow: 0 0 16px rgba(238, 243, 255, 0.5);
+    transform: translateY(-1px);
+}
+
+#btn { margin-top: 6px; }
+
+.resultado { margin-top: 20px; font-weight: bold; color: var(--text); }
+
+.auth-box { margin-top: 20px; }
+.auth-msg { margin-top: 8px; color: var(--danger); }
+
+.product-form { margin-top: 20px; }
+.prod-msg { margin-top: 8px; color: var(--success); }
+
+/* --- Navegación --- */
+.nav-links { margin-top: 24px; display: flex; flex-direction: column; gap: 12px; }
+.nav-links a {
+    display: block;
+    text-align: center;
+    padding: 12px;
+    border-radius: 10px;
+    background: linear-gradient(160deg, var(--panel) 0%, var(--panel-dark) 100%);
+    border: 1px solid rgba(238, 243, 255, 0.15);
+    color: var(--text);
+    text-decoration: none;
+    letter-spacing: 0.03em;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.nav-links a:hover {
+    border-color: var(--ring-light);
+    box-shadow: 0 0 14px rgba(159, 176, 221, 0.45);
+}
+
+.back-link { margin-top: 0; }
+.back-link a {
+    color: var(--star);
+    text-decoration: none;
+}
+.back-link a:hover { text-decoration: underline; }
 
 .hidden { display: none; }
