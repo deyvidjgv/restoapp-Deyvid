@@ -63,9 +63,6 @@ h3 {
 
 p { color: var(--text-dim); }
 
-/* TODO(Ejercicio 4): clase muerta, no se usa en ningún HTML. Eliminar en la limpieza final. */
-.clase_redundante_que_no_se_usa { color: transparent; display: none; }
-
 /* --- Paneles (tarjetas tipo "cápsula espacial") --- */
 #form, .auth-box, .product-form, .resultado {
     background: linear-gradient(160deg, var(--panel) 0%, var(--panel-dark) 100%);
@@ -113,6 +110,7 @@ button:hover {
 #btn { margin-top: 6px; }
 
 .resultado { margin-top: 20px; font-weight: bold; color: var(--text); }
+.resultado.error { color: var(--danger); }
 
 .auth-box { margin-top: 20px; }
 .auth-msg { margin-top: 8px; color: var(--danger); }

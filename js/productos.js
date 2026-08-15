@@ -13,10 +13,16 @@
             return;
         }
 
-        var name = document.getElementById('newName').value;
-        var price = Number(document.getElementById('newPrice').value) || 0;
-        if (name === '' || price <= 0) {
-            msg.innerText = 'Datos inválidos';
+        var name = document.getElementById('newName').value.trim();
+        var priceInput = document.getElementById('newPrice').value;
+        var price = Number(priceInput);
+
+        if (name === '') {
+            msg.innerText = 'El nombre del producto no puede estar vacío.';
+            return;
+        }
+        if (priceInput === '' || isNaN(price) || price <= 0) {
+            msg.innerText = 'El precio debe ser un número mayor a 0.';
             return;
         }
 
