@@ -36,14 +36,12 @@ body {
     font-size: 1rem;
     line-height: 1.5;
     color: var(--text);
+    /* Las estrellas animadas las dibuja js/starfield.js en un <canvas> de
+       fondo; aquí solo va la iluminación ambiental detrás de ese canvas. */
     background:
-        radial-gradient(1px 1px at 12% 18%, var(--star) 100%, transparent 100%),
-        radial-gradient(1px 1px at 78% 12%, var(--star-dim) 100%, transparent 100%),
-        radial-gradient(1px 1px at 30% 65%, var(--star) 100%, transparent 100%),
-        radial-gradient(1px 1px at 88% 55%, var(--star-dim) 100%, transparent 100%),
-        radial-gradient(1px 1px at 55% 82%, var(--star) 100%, transparent 100%),
-        radial-gradient(1px 1px at 6% 90%, var(--star-dim) 100%, transparent 100%),
-        radial-gradient(circle at 30% 20%, var(--bg-light) 0%, var(--bg-mid) 45%, var(--bg-deep) 100%);
+        radial-gradient(30% 26% at 82% 10%, rgba(96, 132, 255, 0.20) 0%, rgba(96, 132, 255, 0) 70%),
+        radial-gradient(26% 22% at 12% 82%, rgba(150, 110, 255, 0.14) 0%, rgba(150, 110, 255, 0) 70%),
+        radial-gradient(120% 90% at 78% 8%, var(--bg-light) 0%, var(--bg-mid) 42%, var(--bg-deep) 100%);
     background-attachment: fixed;
 }
 
@@ -55,9 +53,10 @@ body {
 
 h2 {
     color: var(--text);
-    font-size: 1.6rem;
-    letter-spacing: 0.04em;
-    text-shadow: 0 0 18px rgba(159, 176, 221, 0.45);
+    font-size: 1.85rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    text-shadow: 0 0 24px rgba(120, 150, 255, 0.35);
     margin-top: 0;
 }
 
@@ -69,13 +68,15 @@ h3 {
 
 p { color: var(--text-dim); font-size: 0.95rem; }
 
-/* --- Paneles (tarjetas tipo "cápsula espacial") --- */
+/* --- Paneles ("glass card" sobre el fondo estrellado) --- */
 #form, .auth-box, .product-form, .resultado {
-    background: linear-gradient(160deg, var(--panel) 0%, var(--panel-dark) 100%);
-    border: 1px solid rgba(238, 243, 255, 0.12);
-    border-radius: 18px;
-    padding: 20px;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+    background: linear-gradient(180deg, rgba(28, 43, 92, 0.72) 0%, rgba(13, 22, 56, 0.72) 100%);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid rgba(140, 165, 255, 0.28);
+    border-radius: 14px;
+    padding: 24px;
+    box-shadow: 0 20px 60px rgba(4, 8, 26, 0.55);
 }
 
 .item {
@@ -109,8 +110,8 @@ input, select {
 input::placeholder { color: var(--text-dim); opacity: 0.55; }
 
 input:focus, select:focus {
-    border-color: var(--ring-light);
-    box-shadow: 0 0 10px rgba(238, 243, 255, 0.35);
+    border-color: rgba(170, 195, 255, 0.85);
+    box-shadow: 0 0 0 3px rgba(110, 140, 255, 0.18);
 }
 
 /* --- Botones (anillo del planeta como referencia) --- */
@@ -157,6 +158,8 @@ button.btn-secondary:hover {
 .auth-box { margin-top: 20px; }
 .auth-msg { margin-top: 8px; color: var(--danger); }
 
+.status-msg { color: var(--text-dim); font-style: italic; }
+
 .product-form { margin-top: 20px; }
 .prod-msg { margin-top: 8px; color: var(--success); }
 
@@ -167,8 +170,10 @@ button.btn-secondary:hover {
     text-align: center;
     padding: 12px;
     border-radius: 10px;
-    background: linear-gradient(160deg, var(--panel) 0%, var(--panel-dark) 100%);
-    border: 1px solid rgba(238, 243, 255, 0.15);
+    background: linear-gradient(180deg, rgba(28, 43, 92, 0.72) 0%, rgba(13, 22, 56, 0.72) 100%);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid rgba(140, 165, 255, 0.28);
     color: var(--text);
     text-decoration: none;
     letter-spacing: 0.03em;
@@ -185,5 +190,39 @@ button.btn-secondary:hover {
     text-decoration: none;
 }
 .back-link a:hover { text-decoration: underline; }
+
+/* --- Barra de navegación persistente (presente en las 4 páginas) --- */
+.site-nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.site-nav a, .site-nav button {
+    font-size: 0.85rem;
+    padding: 7px 14px;
+}
+
+.site-nav a {
+    color: var(--text-dim);
+    text-decoration: none;
+    border: 1px solid rgba(238, 243, 255, 0.15);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+
+.site-nav a:hover {
+    border-color: var(--ring-light);
+    color: var(--text);
+}
+
+.site-nav a.active {
+    color: var(--text);
+    border-color: var(--ring-mid);
+    background: rgba(238, 243, 255, 0.1);
+}
 
 .hidden { display: none; }

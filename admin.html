@@ -9,11 +9,21 @@
 <body data-page="admin">
 
 <div class="contenedor-principal">
+    <nav class="site-nav">
+        <a href="index.html" data-nav="index">Inicio</a>
+        <a href="pedido.html" data-nav="pedido">Pedido</a>
+        <a href="admin.html" id="navAdminLink" data-nav="admin" class="hidden">Admin</a>
+        <a href="login.html" id="navLoginLink" data-nav="login">Acceso</a>
+        <button id="navLogoutBtn" class="btn-secondary hidden">Cerrar sesión</button>
+    </nav>
+
     <h2>RestoApp - Administración</h2>
-    <p class="back-link"><a href="index.html">&larr; Inicio</a> &middot; <button id="logoutBtn" class="btn-secondary">Cerrar sesión</button></p>
+
+    <p id="adminStatus" class="status-msg">Verificando sesión...</p>
 
     <!-- Formulario para crear productos (Mala práctica: sin validación segura) -->
-    <div id="productForm" class="product-form">
+    <!-- Oculto por defecto: solo se muestra cuando Firebase confirma la sesión (ver js/auth.js) -->
+    <div id="productForm" class="product-form hidden">
         <h3>Crear producto (Mala práctica: sin validación segura)</h3>
         <div class="item">
             <label for="newName">Nombre</label>
@@ -28,6 +38,7 @@
     </div>
 </div>
 
+<script src="js/starfield.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>

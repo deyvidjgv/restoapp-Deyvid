@@ -9,8 +9,15 @@
 <body data-page="pedido">
 
 <div class="contenedor-principal">
+    <nav class="site-nav">
+        <a href="index.html" data-nav="index">Inicio</a>
+        <a href="pedido.html" data-nav="pedido">Pedido</a>
+        <a href="admin.html" id="navAdminLink" data-nav="admin" class="hidden">Admin</a>
+        <a href="login.html" id="navLoginLink" data-nav="login">Acceso</a>
+        <button id="navLogoutBtn" class="btn-secondary hidden">Cerrar sesión</button>
+    </nav>
+
     <h2>RestoApp - Mesero V1.0</h2>
-    <p class="back-link"><a href="index.html">&larr; Inicio</a></p>
 
     <div id="form">
         <div class="item">
@@ -33,6 +40,11 @@
     <div id="res" class="resultado"></div>
 </div>
 
+<script src="js/starfield.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/auth.js"></script>
 <script src="js/menu.js"></script>
 <script src="js/pedidos.js"></script>
 
