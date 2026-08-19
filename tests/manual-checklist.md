@@ -1,35 +1,85 @@
-# RestoApp - Checklist de pruebas manuales (Ejercicio 4)
+# RestoApp - Checklist de pruebas manuales
 
-Proyecto estático sin build tooling: las pruebas son manuales, ejecutadas
-abriendo cada página en el navegador (idealmente con Live Server u otro
-servidor local, para que Firebase Auth funcione sin restricciones).
+Proyecto estático sin build tooling: las pruebas son manuales, abriendo cada
+página con un servidor local (Live Server, `python3 -m http.server`), nunca con
+`file://`, para que Firebase Auth funcione.
+
+Requisitos previos: reglas de `database.rules.json` publicadas, un admin creado
+y al menos un mesero dado de alta.
 
 ## index.html
 - [ ] Carga sin errores en consola.
-- [ ] El enlace "Tomar pedido" navega a `pedido.html`.
-- [ ] El enlace "Acceso administrador" navega a `login.html`.
-
-## pedido.html
-- [ ] El `<select>` de platos carga las opciones desde Firebase (menú no vacío).
-- [ ] Al seleccionar un plato, el campo "Precio Unitario" se autocompleta.
-- [ ] **Caso éxito**: plato + cantidad > 0 + precio > 0 → muestra subtotal, IVA (19%) y total; limpia el formulario.
-- [ ] **Caso error - sin plato**: dejar "Plato ID" vacío → mensaje "Selecciona un plato del menú." (sin `alert()`).
-- [ ] **Caso error - cantidad inválida**: cantidad = 0 o vacía → mensaje "La cantidad debe ser mayor a 0."
-- [ ] **Caso error - precio inválido**: precio = 0 o vacío → mensaje "El precio unitario debe ser mayor a 0."
+- [ ] Sin sesión: la barra superior muestra "Acceso" y oculta "Pedido"/"Admin".
+- [ ] Con sesión de mesero: aparece "Pedido", NO aparece "Admin".
+- [ ] Con sesión de admin: aparecen "Pedido" y "Admin", y el nombre + rol a la derecha.
 
 ## login.html
-- [ ] **Caso éxito**: correo/contraseña de un usuario creado en Firebase Authentication → redirige a `admin.html`.
-- [ ] **Caso error**: credenciales incorrectas → mensaje "Credenciales inválidas" (sin exponer cuál campo falló).
-- [ ] Botón "Cerrar sesión" solo visible si hay sesión activa.
+- [ ] El selector arranca en **Mesero**; al elegir **Administrador** aparece el
+      bloque "¿Primera vez?" y cambia el texto de ayuda.
+- [ ] **Bootstrap**: sin ningún admin en la base, crear el administrador inicial
+      redirige a `admin.html` y queda registrado en `/usuarios/{uid}` con `rol: "admin"`.
+- [ ] **Bootstrap bloqueado**: con un admin ya existente, el botón responde
+      "Ya existe un administrador...".
+- [ ] **Éxito mesero**: perfil Mesero + credenciales de mesero → redirige a `pedido.html`.
+- [ ] **Éxito admin**: perfil Administrador + credenciales de admin → redirige a `admin.html`.
+- [ ] **Rol cruzado**: perfil Administrador + credenciales de mesero → cierra la
+      sesión y avisa "Esta cuenta es de mesero...".
+- [ ] **Cuenta desactivada**: mesero con `activo: false` → "Esta cuenta está desactivada".
+- [ ] **Credenciales inválidas** → "Credenciales inválidas." (sin decir qué campo falló).
+- [ ] **Validación local**: correo vacío, sin `@`, o contraseña de menos de 6
+      caracteres → mensaje antes de llamar a Firebase.
 
-## admin.html
-- [ ] Si NO hay sesión activa y se abre `admin.html` directamente, redirige a `login.html`.
-- [ ] Con sesión activa, muestra el formulario "Crear producto".
-- [ ] **Caso error - nombre vacío**: mensaje "El nombre del producto no puede estar vacío."
-- [ ] **Caso error - precio inválido**: precio = 0, vacío o texto → mensaje "El precio debe ser un número mayor a 0."
-- [ ] **Caso éxito**: nombre + precio válidos → mensaje "Producto creado" y el formulario se limpia.
-- [ ] Botón "Cerrar sesión" cierra la sesión y redirige a `login.html`.
+## admin.html (solo rol admin)
+- [ ] Sin sesión → redirige a `login.html` con el aviso "Inicia sesión para continuar."
+- [ ] Con sesión de **mesero** → redirige a `pedido.html`.
+- [ ] Con sesión de admin: se oculta "Verificando sesión..." y aparecen las pestañas.
+
+### Pestaña Productos
+- [ ] **Crear**: nombre + precio + stock válidos → "Producto ... creado", el
+      formulario se limpia y la fila aparece en la tabla sin recargar.
+- [ ] **Error nombre vacío** → "El nombre del producto no puede estar vacío."
+- [ ] **Error precio** = 0, vacío o negativo → "El precio debe ser un número mayor a 0."
+- [ ] **Error stock** negativo o decimal → mensaje de stock correspondiente.
+- [ ] **Editar**: el icono de lápiz convierte la fila en campos; guardar
+      persiste nombre, precio y stock; cancelar descarta los cambios.
+- [ ] **Ocultar/mostrar**: el producto oculto desaparece del `<select>` del mesero.
+- [ ] **Eliminar**: pide confirmación y la fila desaparece de la tabla.
+- [ ] Badges de stock: verde con stock alto, ámbar con 5 o menos, rojo en "agotado".
+
+### Pestaña Meseros
+- [ ] **Crear mesero**: nombre + correo + contraseña ≥ 6 → aparece en la tabla
+      y **la sesión del admin sigue activa** (no redirige ni cierra sesión).
+- [ ] El mesero recién creado puede ingresar desde `login.html` con perfil Mesero.
+- [ ] **Correo repetido** → "Ese correo ya está registrado."
+- [ ] **Desactivar**: el mesero queda "desactivado" y ya no puede ingresar.
+- [ ] **Eliminar**: pide confirmación; el mesero pierde acceso al panel.
+
+## pedido.html (rol mesero o admin)
+- [ ] Sin sesión → redirige a `login.html`.
+- [ ] El `<select>` carga solo los platos visibles; los agotados salen marcados
+      "(agotado)" y no son seleccionables.
+- [ ] Al seleccionar un plato, el **precio unitario se autocompleta y no es
+      editable** (campo de solo lectura) y se muestra "Disponibles: N u.".
+- [ ] **Agregar**: cantidad válida → la línea aparece en "Pedido actual" y los
+      totales (subtotal, IVA 19%, total) se recalculan.
+- [ ] **Error sin plato** → "Selecciona un plato del menú."
+- [ ] **Error cantidad** = 0, vacía o decimal → mensaje correspondiente.
+- [ ] **Error stock**: pedir más unidades de las disponibles → "Solo quedan N u. de ...".
+- [ ] Agregar dos veces el mismo plato suma cantidades en una sola línea.
+- [ ] **Quitar línea** y **Vaciar** (con confirmación) actualizan los totales.
+- [ ] **Procesar sin líneas** → "Agrega al menos un plato antes de procesar."
+- [ ] **Procesar con líneas** → mensaje con el código legible (`P-DDMM-XXXX`),
+      el carrito se vacía y el pedido aparece en "Mis últimos pedidos".
+- [ ] Tras procesar, el **stock baja** en `admin.html` en la cantidad pedida.
+- [ ] **Concurrencia**: con 1 unidad en stock, procesar el mismo plato desde dos
+      navegadores → uno registra el pedido y el otro recibe "Alguien tomó las
+      últimas unidades..." sin dejar el stock negativo.
+- [ ] El historial muestra código, fecha, platos y total; nunca la clave interna
+      de Firebase.
 
 ## Seguridad (Realtime Database)
-- [ ] Sin sesión iniciada, un intento de escritura directo a `menu.json` (ej. con `curl` o Postman) debe ser rechazado (`permission_denied`), confirmando que la regla `.write: auth != null` está activa.
-- [ ] La lectura del menú (`menu.json`) sigue siendo pública sin necesidad de sesión.
+- [ ] Sin sesión, escribir en `menu.json` con `curl`/Postman → `permission_denied`.
+- [ ] Con sesión de **mesero**, escribir `menu/{id}/price` → `permission_denied`
+      (solo puede tocar `stock`).
+- [ ] Con sesión de **mesero**, escribir en `/usuarios/{otroUid}` → `permission_denied`.
+- [ ] La lectura del menú (`menu.json`) sigue siendo pública.

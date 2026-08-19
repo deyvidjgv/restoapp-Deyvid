@@ -1,0 +1,53 @@
+{
+  "rules": {
+    "usuarios": {
+      ".read": "auth != null",
+      ".indexOn": ["rol"],
+      "$uid": {
+        ".write": "auth != null && (root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' || (!root.child('usuarios').exists() && auth.uid === $uid && newData.child('rol').val() === 'admin'))",
+        ".validate": "!newData.exists() || newData.hasChildren(['rol', 'email'])",
+        "rol": {
+          ".validate": "newData.isString() && (newData.val() === 'admin' || newData.val() === 'mesero')"
+        },
+        "email": { ".validate": "newData.isString() && newData.val().length <= 120" },
+        "nombre": { ".validate": "newData.isString() && newData.val().length <= 60" },
+        "activo": { ".validate": "newData.isBoolean()" },
+        "createdBy": { ".validate": "newData.isString()" },
+        "createdAt": { ".validate": "newData.isNumber()" },
+        "$otro": { ".validate": false }
+      }
+    },
+
+    "menu": {
+      ".read": true,
+      ".write": "auth != null && root.child('usuarios').child(auth.uid).child('rol').val() === 'admin'",
+      "$productoId": {
+        ".validate": "!newData.exists() || newData.hasChildren(['name', 'price'])",
+        "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+        "price": { ".validate": "newData.isNumber() && newData.val() > 0" },
+        "stock": {
+          ".write": "auth != null && root.child('usuarios').child(auth.uid).child('rol').exists()",
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "activo": { ".validate": "newData.isBoolean()" },
+        "createdAt": { ".validate": "newData.isNumber()" },
+        "updatedAt": { ".validate": "newData.isNumber()" },
+        "$otro": { ".validate": false }
+      }
+    },
+
+    "pedidos": {
+      ".read": "auth != null && root.child('usuarios').child(auth.uid).child('rol').exists()",
+      ".indexOn": ["meseroUid"],
+      "$pedidoId": {
+        ".write": "auth != null && !data.exists() && newData.child('meseroUid').val() === auth.uid",
+        ".validate": "newData.hasChildren(['codigo', 'meseroUid', 'items', 'total', 'createdAt'])",
+        "meseroUid": { ".validate": "newData.val() === auth.uid" },
+        "total": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "subtotal": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "iva": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "createdAt": { ".validate": "newData.isNumber()" }
+      }
+    }
+  }
+}

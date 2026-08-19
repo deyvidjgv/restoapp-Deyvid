@@ -2,39 +2,129 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>RestoApp - Administración</title>
     <link rel="icon" type="image/png" href="img/favicon.png">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body data-page="admin">
 
-<div class="contenedor-principal">
+<div class="contenedor-principal contenedor-ancho">
     <nav class="site-nav">
-        <a href="index.html" data-nav="index">Inicio</a>
-        <a href="pedido.html" data-nav="pedido">Pedido</a>
-        <a href="admin.html" id="navAdminLink" data-nav="admin" class="hidden">Admin</a>
-        <a href="login.html" id="navLoginLink" data-nav="login">Acceso</a>
-        <button id="navLogoutBtn" class="btn-secondary hidden">Cerrar sesión</button>
+        <a href="index.html" data-nav="index"><span data-icon="inicio"></span>Inicio</a>
+        <a href="pedido.html" id="navPedidoLink" data-nav="pedido" class="hidden"><span data-icon="pedido"></span>Pedido</a>
+        <a href="admin.html" id="navAdminLink" data-nav="admin" class="hidden"><span data-icon="admin"></span>Admin</a>
+        <a href="login.html" id="navLoginLink" data-nav="login"><span data-icon="login"></span>Acceso</a>
+        <span id="navUser" class="nav-user hidden"></span>
+        <button id="navLogoutBtn" class="btn-secondary hidden"><span data-icon="logout"></span>Cerrar sesión</button>
     </nav>
 
-    <h2>RestoApp - Administración</h2>
+    <h2>Panel de administración</h2>
 
-    <p id="adminStatus" class="status-msg">Verificando sesión...</p>
+    <p id="pageStatus" class="status-msg">Verificando sesión...</p>
 
-    <!-- Formulario para crear productos (Mala práctica: sin validación segura) -->
-    <!-- Oculto por defecto: solo se muestra cuando Firebase confirma la sesión (ver js/auth.js) -->
-    <div id="productForm" class="product-form hidden">
-        <h3>Crear producto (Mala práctica: sin validación segura)</h3>
-        <div class="item">
-            <label for="newName">Nombre</label>
-            <input type="text" id="newName" placeholder="Ej: Bandeja Paisa">
+    <div id="pageContent" class="hidden">
+        <div class="tabs" role="tablist">
+            <button class="tab active" data-tab="tabProductos" role="tab" aria-selected="true">
+                <span data-icon="plato"></span>Productos
+            </button>
+            <button class="tab" data-tab="tabMeseros" role="tab" aria-selected="false">
+                <span data-icon="mesero"></span>Meseros
+            </button>
         </div>
-        <div class="item">
-            <label for="newPrice">Precio ($)</label>
-            <input type="number" id="newPrice" placeholder="Ej: 25000" min="0">
-        </div>
-        <button id="crearProductoBtn">Crear</button>
-        <div id="prodMsg" class="prod-msg"></div>
+
+        <!-- ================= Productos ================= -->
+        <section id="tabProductos" class="tab-panel" role="tabpanel">
+            <div class="panel">
+                <h3><span data-icon="crear"></span>Nuevo producto</h3>
+                <div class="grid-form">
+                    <div class="item">
+                        <label for="newName">Nombre del plato</label>
+                        <input type="text" id="newName" placeholder="Ej: Bandeja Paisa" maxlength="60">
+                    </div>
+                    <div class="item">
+                        <label for="newPrice">Precio unitario ($)</label>
+                        <input type="number" id="newPrice" placeholder="Ej: 25000" min="1" step="1">
+                    </div>
+                    <div class="item">
+                        <label for="newStock">Stock inicial</label>
+                        <input type="number" id="newStock" placeholder="Ej: 20" min="0" step="1">
+                    </div>
+                </div>
+                <button id="crearProductoBtn"><span data-icon="crear"></span>Crear producto</button>
+                <div id="prodMsg" class="form-msg" role="status" aria-live="polite"></div>
+            </div>
+
+            <div class="panel">
+                <h3><span data-icon="stock"></span>Productos registrados</h3>
+                <p class="field-hint">
+                    El precio unitario definido aquí es el que verá el mesero: en el
+                    panel de pedidos es de solo lectura.
+                </p>
+                <div class="tabla-scroll">
+                    <table class="tabla" id="tablaProductos">
+                        <thead>
+                            <tr>
+                                <th>Plato</th>
+                                <th>Precio</th>
+                                <th>Stock</th>
+                                <th>Estado</th>
+                                <th class="col-acciones">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productosBody">
+                            <tr><td colspan="5" class="tabla-vacia">Cargando productos...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= Meseros ================= -->
+        <section id="tabMeseros" class="tab-panel hidden" role="tabpanel">
+            <div class="panel">
+                <h3><span data-icon="crear"></span>Nuevo mesero</h3>
+                <p class="field-hint">
+                    La cuenta creada podrá ingresar desde la pantalla de acceso
+                    seleccionando el perfil "Mesero".
+                </p>
+                <div class="grid-form">
+                    <div class="item">
+                        <label for="meseroName">Nombre</label>
+                        <input type="text" id="meseroName" placeholder="Ej: Ana Gómez" maxlength="60">
+                    </div>
+                    <div class="item">
+                        <label for="meseroEmail">Correo</label>
+                        <input type="email" id="meseroEmail" placeholder="mesero@correo.com" autocomplete="off">
+                    </div>
+                    <div class="item">
+                        <label for="meseroPass">Contraseña temporal</label>
+                        <input type="password" id="meseroPass" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+                    </div>
+                </div>
+                <button id="crearMeseroBtn"><span data-icon="mesero"></span>Crear mesero</button>
+                <div id="meseroMsg" class="form-msg" role="status" aria-live="polite"></div>
+            </div>
+
+            <div class="panel">
+                <h3><span data-icon="mesero"></span>Meseros registrados</h3>
+                <div class="tabla-scroll">
+                    <table class="tabla" id="tablaMeseros">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Correo</th>
+                                <th>Estado</th>
+                                <th class="col-acciones">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="meserosBody">
+                            <tr><td colspan="4" class="tabla-vacia">Cargando meseros...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
     </div>
 </div>
 
@@ -43,8 +133,14 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 <script src="js/firebase-config.js"></script>
+<script src="js/icons.js"></script>
+<script src="js/formato.js"></script>
+<script src="js/tabs.js"></script>
+<script src="js/roles.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/menu.js"></script>
 <script src="js/productos.js"></script>
+<script src="js/meseros.js"></script>
 
 </body>
 </html>

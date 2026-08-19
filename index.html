@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>RestoApp - Inicio</title>
     <link rel="icon" type="image/png" href="img/favicon.png">
     <link rel="stylesheet" href="css/styles.css">
@@ -10,25 +11,39 @@
 
 <div class="contenedor-principal">
     <nav class="site-nav">
-        <a href="index.html" data-nav="index">Inicio</a>
-        <a href="pedido.html" data-nav="pedido">Pedido</a>
-        <a href="admin.html" id="navAdminLink" data-nav="admin" class="hidden">Admin</a>
-        <a href="login.html" id="navLoginLink" data-nav="login">Acceso</a>
-        <button id="navLogoutBtn" class="btn-secondary hidden">Cerrar sesión</button>
+        <a href="index.html" data-nav="index"><span data-icon="inicio"></span>Inicio</a>
+        <a href="pedido.html" id="navPedidoLink" data-nav="pedido" class="hidden"><span data-icon="pedido"></span>Pedido</a>
+        <a href="admin.html" id="navAdminLink" data-nav="admin" class="hidden"><span data-icon="admin"></span>Admin</a>
+        <a href="login.html" id="navLoginLink" data-nav="login"><span data-icon="login"></span>Acceso</a>
+        <span id="navUser" class="nav-user hidden"></span>
+        <button id="navLogoutBtn" class="btn-secondary hidden"><span data-icon="logout"></span>Cerrar sesión</button>
     </nav>
 
     <h2>RestoApp</h2>
-    <p>Sistema de pedidos del restaurante.</p>
+    <p>Sistema de pedidos del restaurante: el administrador gestiona el menú y las cuentas, el mesero toma los pedidos.</p>
+
     <div class="nav-links">
-        <a href="pedido.html">Tomar pedido</a>
-        <a href="login.html">Acceso administrador</a>
+        <a href="pedido.html"><span data-icon="mesero"></span>Entrar como mesero</a>
+        <a href="login.html"><span data-icon="admin"></span>Entrar como administrador</a>
+    </div>
+
+    <div class="panel panel-info">
+        <h3><span data-icon="alerta"></span>Cómo funciona</h3>
+        <ul class="lista-info">
+            <li>El <strong>administrador</strong> crea los platos con su precio y stock, y puede editarlos u ocultarlos.</li>
+            <li>El <strong>mesero</strong> arma el pedido desde el menú: el precio unitario ya viene definido y no se puede cambiar.</li>
+            <li>Al procesar un pedido se descuenta el stock y se guarda con un código legible (ej. <code>P-1908-4M7X</code>).</li>
+        </ul>
     </div>
 </div>
 
 <script src="js/starfield.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 <script src="js/firebase-config.js"></script>
+<script src="js/icons.js"></script>
+<script src="js/roles.js"></script>
 <script src="js/auth.js"></script>
 
 </body>
