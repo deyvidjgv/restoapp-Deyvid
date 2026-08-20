@@ -4,7 +4,7 @@
       ".read": "auth != null",
       ".indexOn": ["rol"],
       "$uid": {
-        ".write": "auth != null && (root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' || (!root.child('usuarios').exists() && auth.uid === $uid && newData.child('rol').val() === 'admin'))",
+        ".write": "auth != null && (root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' || (!data.parent().exists() && auth.uid === $uid && newData.child('rol').val() === 'admin'))",
         ".validate": "!newData.exists() || newData.hasChildren(['rol', 'email'])",
         "rol": {
           ".validate": "newData.isString() && (newData.val() === 'admin' || newData.val() === 'mesero')"
