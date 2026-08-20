@@ -7,76 +7,40 @@
     <link rel="icon" type="image/png" href="img/favicon.png">
     <link rel="stylesheet" href="css/styles.css">
 </head>
-<body data-page="login">
+<body data-pagina="login">
 
-<div class="contenedor-principal">
-    <nav class="site-nav">
-        <a href="index.html" data-nav="index"><span data-icon="inicio"></span>Inicio</a>
-        <a href="pedido.html" id="navPedidoLink" data-nav="pedido" class="hidden"><span data-icon="pedido"></span>Pedido</a>
-        <a href="admin.html" id="navAdminLink" data-nav="admin" class="hidden"><span data-icon="admin"></span>Admin</a>
-        <a href="login.html" id="navLoginLink" data-nav="login"><span data-icon="login"></span>Acceso</a>
-        <span id="navUser" class="nav-user hidden"></span>
-        <button id="navLogoutBtn" class="btn-secondary hidden"><span data-icon="logout"></span>Cerrar sesión</button>
+<header class="barra">
+    <a href="index.html" class="marca">Resto<span>App</span></a>
+    <nav>
+        <a href="pedido.html" data-nav="pedido">Menú</a>
+        <a href="admin.html" data-nav="admin">Panel administrativo</a>
     </nav>
+    <div id="sesion" class="sesion oculto">
+        Sesión: <strong id="sesionCorreo"></strong>
+        <button id="salirBtn">Cerrar sesión</button>
+    </div>
+</header>
 
-    <h2>Acceso a RestoApp</h2>
+<div class="centrado">
+    <h1>Acceso</h1>
+    <p class="subtitulo">Ingresa con tu cuenta de administrador para gestionar el menú.</p>
 
-    <div id="auth" class="auth-box">
-        <div id="loginForm">
-            <p class="field-hint">Ingresar como</p>
-            <div class="role-switch" role="group" aria-label="Selecciona tu perfil">
-                <button type="button" class="role-option active" data-role="mesero" aria-pressed="true">
-                    <span data-icon="mesero"></span>Mesero
-                </button>
-                <button type="button" class="role-option" data-role="admin" aria-pressed="false">
-                    <span data-icon="admin"></span>Administrador
-                </button>
-            </div>
-            <p id="roleHelp" class="field-hint"></p>
+    <div class="tarjeta" id="loginForm">
+        <label for="email">Correo</label>
+        <input type="email" id="email" placeholder="tu@correo.com" autocomplete="username">
 
-            <div class="item">
-                <label for="email">Correo</label>
-                <input type="email" id="email" placeholder="tu@correo.com" autocomplete="username">
-            </div>
-            <div class="item">
-                <label for="pass">Contraseña</label>
-                <input type="password" id="pass" placeholder="Mínimo 6 caracteres" autocomplete="current-password">
-            </div>
-            <button id="loginBtn"><span data-icon="login"></span>Ingresar</button>
+        <label for="pass">Contraseña</label>
+        <input type="password" id="pass" placeholder="Mínimo 6 caracteres" autocomplete="current-password">
 
-            <!-- Solo visible con el perfil "Administrador" seleccionado: crea el
-                 PRIMER admin del sistema. Una vez existe uno, el autorregistro
-                 queda cerrado y las demás cuentas se crean desde el panel. -->
-            <div id="bootstrapBox" class="bootstrap-box hidden">
-                <h3>¿Primera vez?</h3>
-                <p class="field-hint">
-                    Si aún no existe ningún administrador, crea aquí la cuenta inicial
-                    con el correo y la contraseña de arriba.
-                </p>
-                <div class="item">
-                    <label for="bootstrapName">Nombre del administrador</label>
-                    <input type="text" id="bootstrapName" placeholder="Ej: Deyvid">
-                </div>
-                <button id="bootstrapBtn" class="btn-secondary"><span data-icon="crear"></span>Crear administrador inicial</button>
-            </div>
-        </div>
-
-        <p id="alreadyLoggedMsg" class="hidden">
-            Ya tienes una sesión iniciada. Ir a
-            <a id="alreadyLoggedLink" href="pedido.html">tu panel</a>.
-        </p>
-
-        <div id="authMsg" class="auth-msg" role="status" aria-live="polite"></div>
+        <button id="entrarBtn" class="principal">Ingresar</button>
+        <div id="authMsg" class="mensaje" role="status" aria-live="polite"></div>
     </div>
 </div>
 
-<script src="js/starfield.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 <script src="js/firebase-config.js"></script>
-<script src="js/icons.js"></script>
-<script src="js/roles.js"></script>
+<script src="js/comun.js"></script>
 <script src="js/auth.js"></script>
 
 </body>
