@@ -1,524 +1,315 @@
-/* RestoApp - Tema "Restaurante Espacial" (Ejercicio 1: MPA) */
+/* RestoApp - Tema claro, minimalista */
 
 :root {
-    --bg-deep: #050a1c;
-    --bg-mid: #0a1230;
-    --bg-light: #16244a;
-
-    --star: #dbe6ff;
-    --star-dim: #aebdea;
-
-    --accent-glow: #3a5faf;
-    --accent-glow-dark: #1a2c66;
-
-    --ring-light: #eef3ff;
-    --ring-mid: #c7d4f2;
-    --ring-dark: #9fb0dd;
-
-    --panel: #1c2b5c;
-    --panel-dark: #0d1638;
-
-    --text: #eef3ff;
-    --text-dim: #b9c6ec;
-
-    --danger: #ff6b81;
-    --warning: #ffcf70;
-    --success: #6ee7c8;
+    --bg: #f5f6f8;
+    --superficie: #ffffff;
+    --borde: #e5e7eb;
+    --texto: #111827;
+    --texto-suave: #6b7280;
+    --marca: #c0392b;
+    --marca-suave: #fdeceb;
+    --error: #b91c1c;
+    --ok: #15803d;
 }
 
 * { box-sizing: border-box; }
 
-html { font-size: 16px; }
-
 body {
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
     margin: 0;
-    min-height: 100vh;
-    font-size: 1rem;
+    background: var(--bg);
+    color: var(--texto);
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-size: 15px;
     line-height: 1.5;
-    color: var(--text);
-    /* Las estrellas animadas las dibuja js/starfield.js en un <canvas> de
-       fondo; aquí solo va la iluminación ambiental detrás de ese canvas. */
-    background:
-        radial-gradient(30% 26% at 82% 10%, rgba(96, 132, 255, 0.20) 0%, rgba(96, 132, 255, 0) 70%),
-        radial-gradient(26% 22% at 12% 82%, rgba(150, 110, 255, 0.14) 0%, rgba(150, 110, 255, 0) 70%),
-        radial-gradient(120% 90% at 78% 8%, var(--bg-light) 0%, var(--bg-mid) 42%, var(--bg-deep) 100%);
-    background-attachment: fixed;
 }
 
-.contenedor-principal {
-    width: 100%;
-    max-width: 420px;
-    margin: auto;
-    padding: 40px 24px;
+/* --- Barra superior --- */
+
+.barra {
+    background: var(--superficie);
+    border-bottom: 1px solid var(--borde);
+    padding: 14px 32px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
 }
 
-/* Los paneles con tablas (admin y mesero) necesitan más ancho que los
-   formularios simples de inicio y acceso. */
-.contenedor-ancho { max-width: 880px; }
-
-h2 {
-    color: var(--text);
-    font-size: 1.85rem;
+.marca {
+    font-size: 1.05rem;
     font-weight: 700;
-    letter-spacing: -0.01em;
-    text-shadow: 0 0 24px rgba(120, 150, 255, 0.35);
-    margin-top: 0;
+    text-decoration: none;
+    color: var(--texto);
 }
 
-h3 {
-    color: var(--text-dim);
-    font-size: 1.1rem;
-    letter-spacing: 0.02em;
+.marca span { color: var(--marca); }
+
+.barra nav {
     display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 0;
-}
-
-p { color: var(--text-dim); font-size: 0.95rem; }
-
-code {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    background: rgba(5, 10, 28, 0.6);
-    border: 1px solid rgba(140, 165, 255, 0.22);
-    border-radius: 5px;
-    padding: 1px 5px;
-    font-size: 0.85em;
-}
-
-/* --- Iconos --- */
-.icon {
-    width: 1.05em;
-    height: 1.05em;
-    flex: none;
-    vertical-align: -0.15em;
-}
-
-[data-icon] {
-    display: inline-flex;
-    align-items: center;
-}
-
-/* --- Paneles ("glass card" sobre el fondo estrellado) --- */
-.panel, .auth-box, .resultado {
-    background: linear-gradient(180deg, rgba(28, 43, 92, 0.72) 0%, rgba(13, 22, 56, 0.72) 100%);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    border: 1px solid rgba(140, 165, 255, 0.28);
-    border-radius: 14px;
-    padding: 24px;
-    box-shadow: 0 20px 60px rgba(4, 8, 26, 0.55);
-    margin-bottom: 20px;
-}
-
-.panel-info { margin-top: 24px; }
-
-.lista-info {
-    color: var(--text-dim);
-    font-size: 0.9rem;
-    padding-left: 20px;
-    margin: 0;
-}
-
-.lista-info li { margin-bottom: 8px; }
-
-.item {
-    display: flex;
-    flex-direction: column;
     gap: 6px;
-    margin-bottom: 16px;
+    margin: 0 auto;
 }
 
-.item label {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--text-dim);
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
+.barra nav a {
+    color: var(--texto-suave);
+    text-decoration: none;
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 0.92rem;
 }
 
-.grid-form {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 0 16px;
+.barra nav a:hover { background: var(--bg); }
+
+.barra nav a.activo {
+    background: var(--marca-suave);
+    color: var(--marca);
 }
 
-.field-hint {
-    font-size: 0.78rem;
-    color: var(--text-dim);
-    opacity: 0.85;
-    margin: 0 0 10px;
-}
-
-/* --- Inputs y select --- */
-input, select {
-    width: 100%;
-    background: var(--bg-deep);
-    color: var(--text);
-    border: 1px solid var(--accent-glow);
-    border-radius: 8px;
-    padding: 9px 12px;
-    font-size: 0.95rem;
-    font-family: inherit;
-    outline: none;
-}
-
-input::placeholder { color: var(--text-dim); opacity: 0.55; }
-
-input:focus, select:focus {
-    border-color: rgba(170, 195, 255, 0.85);
-    box-shadow: 0 0 0 3px rgba(110, 140, 255, 0.18);
-}
-
-input:disabled, select:disabled, button:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-}
-
-/* El precio unitario en el panel del mesero: visible pero claramente no editable. */
-input[readonly] {
-    background: rgba(5, 10, 28, 0.55);
-    border-style: dashed;
-    color: var(--text-dim);
-    cursor: default;
-}
-
-/* --- Botones (anillo del planeta como referencia) --- */
-button {
-    background: linear-gradient(180deg, var(--ring-light) 0%, var(--ring-mid) 55%, var(--ring-dark) 100%);
-    color: var(--bg-deep);
-    border: none;
-    border-radius: 8px;
-    padding: 10px 18px;
-    font-size: 0.95rem;
-    font-weight: 600;
-    font-family: inherit;
-    cursor: pointer;
-    display: inline-flex;
+.sesion {
+    display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    gap: 12px;
+    font-size: 0.88rem;
+    color: var(--texto-suave);
 }
 
-button:hover:not(:disabled) {
-    box-shadow: 0 0 16px rgba(238, 243, 255, 0.5);
-    transform: translateY(-1px);
+.sesion strong { color: var(--texto); }
+
+/* --- Estructura --- */
+
+.contenido {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 32px;
 }
 
-button.btn-secondary {
-    background: transparent;
-    color: var(--text-dim);
-    border: 1px solid rgba(238, 243, 255, 0.3);
-    font-weight: 500;
+h1 {
+    font-size: 1.75rem;
+    margin: 0 0 6px;
 }
 
-button.btn-secondary:hover:not(:disabled) {
-    box-shadow: none;
-    border-color: var(--ring-light);
-    color: var(--text);
-    transform: none;
+.subtitulo {
+    color: var(--texto-suave);
+    margin: 0 0 28px;
 }
 
-.acciones-fila {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 4px;
-}
-
-/* Botones de acción dentro de las tablas */
-button.btn-icono {
-    background: transparent;
-    border: 1px solid rgba(238, 243, 255, 0.22);
-    color: var(--text-dim);
-    padding: 6px;
-    border-radius: 7px;
-}
-
-button.btn-icono .icon { width: 1.05rem; height: 1.05rem; }
-
-button.btn-icono:hover:not(:disabled) {
-    color: var(--text);
-    border-color: var(--ring-light);
-    box-shadow: none;
-    transform: none;
-}
-
-button.btn-icono.peligro:hover:not(:disabled) {
-    color: var(--danger);
-    border-color: var(--danger);
-}
-
-/* --- Selector de rol (login) --- */
-.role-switch {
+.columnas {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 10px;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 24px;
+    align-items: start;
 }
 
-button.role-option {
-    background: rgba(5, 10, 28, 0.5);
-    border: 1px solid rgba(140, 165, 255, 0.3);
-    color: var(--text-dim);
-    font-weight: 500;
-    padding: 14px 10px;
-    flex-direction: column;
-    gap: 6px;
+.tarjeta {
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    padding: 22px;
 }
 
-button.role-option .icon { width: 1.4rem; height: 1.4rem; }
+.tarjeta + .tarjeta { margin-top: 24px; }
 
-button.role-option:hover:not(:disabled) {
-    box-shadow: none;
-    transform: none;
-    border-color: var(--ring-mid);
-    color: var(--text);
+.tarjeta h2 {
+    font-size: 1.05rem;
+    margin: 0 0 16px;
 }
 
-button.role-option.active {
-    background: linear-gradient(180deg, rgba(58, 95, 175, 0.55) 0%, rgba(26, 44, 102, 0.55) 100%);
-    border-color: var(--ring-light);
-    color: var(--text);
-    box-shadow: 0 0 18px rgba(110, 140, 255, 0.25);
-}
+/* --- Tabla --- */
 
-.bootstrap-box {
-    margin-top: 20px;
-    padding-top: 16px;
-    border-top: 1px dashed rgba(140, 165, 255, 0.28);
-}
-
-/* --- Pestañas del panel de administración --- */
-.tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 20px;
-}
-
-button.tab {
-    background: rgba(5, 10, 28, 0.5);
-    border: 1px solid rgba(140, 165, 255, 0.28);
-    color: var(--text-dim);
-    font-weight: 500;
-    padding: 9px 16px;
-}
-
-button.tab:hover:not(:disabled) {
-    box-shadow: none;
-    transform: none;
-    color: var(--text);
-    border-color: var(--ring-mid);
-}
-
-button.tab.active {
-    background: linear-gradient(180deg, rgba(58, 95, 175, 0.55) 0%, rgba(26, 44, 102, 0.55) 100%);
-    border-color: var(--ring-light);
-    color: var(--text);
-}
-
-/* --- Tablas --- */
-.tabla-scroll {
-    overflow-x: auto;
-    margin-top: 12px;
-}
-
-.tabla {
+table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.9rem;
-    min-width: 480px;
 }
 
-.tabla th, .tabla td {
+th {
     text-align: left;
-    padding: 10px 12px;
-    border-bottom: 1px solid rgba(140, 165, 255, 0.16);
-    vertical-align: middle;
-}
-
-.tabla th {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-dim);
+    letter-spacing: 0.04em;
+    color: var(--texto-suave);
     font-weight: 600;
+    padding: 0 0 10px;
+    border-bottom: 1px solid var(--borde);
 }
 
-.tabla tbody tr:hover { background: rgba(140, 165, 255, 0.06); }
-.tabla tbody tr:last-child td { border-bottom: none; }
+td {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--borde);
+}
 
-.tabla .col-acciones {
+tr:last-child td { border-bottom: none; }
+
+td.acciones {
     text-align: right;
     white-space: nowrap;
 }
 
-.tabla .col-acciones button + button { margin-left: 6px; }
+td.acciones button + button { margin-left: 8px; }
 
-.tabla-vacia {
-    color: var(--text-dim);
-    font-style: italic;
+.vacio {
     text-align: center;
-    padding: 18px 12px;
+    color: var(--texto-suave);
+    padding: 28px 0;
 }
 
-.fila-edicion { background: rgba(110, 140, 255, 0.1); }
+/* --- Formularios --- */
 
-.input-celda {
-    padding: 6px 8px;
+label {
+    display: block;
     font-size: 0.88rem;
-    min-width: 90px;
+    margin: 14px 0 5px;
 }
 
-/* --- Badges de estado / stock --- */
-.badge {
-    display: inline-block;
-    padding: 3px 9px;
-    border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    border: 1px solid currentColor;
-    white-space: nowrap;
+input {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    background: var(--superficie);
+    color: var(--texto);
 }
 
-.badge-ok { color: var(--success); }
-.badge-aviso { color: var(--warning); }
-.badge-alerta { color: var(--danger); }
-.badge-neutro { color: var(--text-dim); }
-
-/* --- Totales del pedido --- */
-.totales {
-    margin: 18px 0 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+input:focus {
+    outline: none;
+    border-color: var(--marca);
 }
 
-.totales > div {
+input[readonly] {
+    background: #f3f4f6;
+    color: var(--texto-suave);
+}
+
+.ayuda {
+    font-size: 0.78rem;
+    color: var(--texto-suave);
+    margin: 5px 0 0;
+}
+
+/* --- Botones --- */
+
+button {
+    font-family: inherit;
+    font-size: 0.9rem;
+    padding: 9px 16px;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    background: var(--superficie);
+    color: var(--texto);
+    cursor: pointer;
+}
+
+button:hover:not(:disabled) { background: var(--bg); }
+
+button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+button.principal {
+    background: var(--marca);
+    border-color: var(--marca);
+    color: #fff;
+    font-weight: 500;
+    margin-top: 18px;
+    width: 100%;
+}
+
+button.principal:hover:not(:disabled) { background: #a93226; }
+
+button.peligro {
+    color: var(--marca);
+    border-color: #f0b9b3;
+}
+
+button.peligro:hover:not(:disabled) { background: var(--marca-suave); }
+
+/* --- Menú de platos (página de pedido) --- */
+
+.platos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 14px;
+}
+
+.plato {
+    background: #f3f4f6;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: left;
+    cursor: pointer;
+    display: block;
+    width: 100%;
+}
+
+.plato:hover:not(:disabled) { background: #eceef1; }
+
+.plato.elegido {
+    border-color: var(--marca);
+    background: var(--marca-suave);
+}
+
+.plato .nombre { font-weight: 600; }
+
+.plato .precio {
+    color: var(--texto-suave);
+    font-size: 0.9rem;
+    margin-top: 3px;
+}
+
+/* --- Total --- */
+
+.total {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
-    gap: 16px;
-}
-
-.totales dt {
-    color: var(--text-dim);
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-}
-
-.totales dd {
-    margin: 0;
-    font-variant-numeric: tabular-nums;
-}
-
-.totales .total-final {
-    border-top: 1px solid rgba(140, 165, 255, 0.28);
-    padding-top: 8px;
-    margin-top: 4px;
-    font-size: 1.15rem;
+    align-items: center;
+    border-top: 1px solid var(--borde);
+    margin-top: 20px;
+    padding-top: 16px;
     font-weight: 700;
 }
 
-.totales .total-final dt { color: var(--text); font-size: 0.95rem; }
-
 /* --- Mensajes --- */
-.resultado {
-    margin-top: 16px;
-    font-weight: 600;
-    color: var(--success);
+
+.mensaje {
+    margin-top: 14px;
+    font-size: 0.88rem;
+    color: var(--ok);
+    min-height: 1.2em;
 }
 
-.resultado.error { color: var(--danger); }
+.mensaje.error { color: var(--error); }
 
-.auth-box { margin-top: 20px; }
+/* --- Inicio y login --- */
 
-.auth-msg { margin-top: 12px; color: var(--success); min-height: 1.2em; font-size: 0.9rem; }
-.auth-msg.error { color: var(--danger); }
+.centrado {
+    max-width: 400px;
+    margin: 60px auto;
+    padding: 0 24px;
+}
 
-.form-msg { margin-top: 12px; color: var(--success); min-height: 1.2em; font-size: 0.9rem; }
-.form-msg.error { color: var(--danger); }
-
-.status-msg { color: var(--text-dim); font-style: italic; }
-
-/* --- Navegación --- */
-.nav-links { margin-top: 24px; display: flex; flex-direction: column; gap: 12px; }
-
-.nav-links a {
+.accesos {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    padding: 12px;
-    border-radius: 10px;
-    background: linear-gradient(180deg, rgba(28, 43, 92, 0.72) 0%, rgba(13, 22, 56, 0.72) 100%);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    border: 1px solid rgba(140, 165, 255, 0.28);
-    color: var(--text);
-    text-decoration: none;
-    letter-spacing: 0.03em;
-    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    gap: 14px;
+    margin-top: 24px;
 }
 
-.nav-links a:hover {
-    border-color: var(--ring-light);
-    box-shadow: 0 0 14px rgba(159, 176, 221, 0.45);
-}
-
-/* --- Barra de navegación persistente (presente en las 4 páginas) --- */
-.site-nav {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 24px;
-}
-
-.site-nav a, .site-nav button {
-    font-size: 0.85rem;
-    padding: 7px 14px;
-}
-
-.site-nav a {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--text-dim);
-    text-decoration: none;
-    border: 1px solid rgba(238, 243, 255, 0.15);
+.accesos a {
+    flex: 1;
+    text-align: center;
+    padding: 14px;
+    background: var(--superficie);
+    border: 1px solid var(--borde);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.03);
-    transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+    text-decoration: none;
+    color: var(--texto);
 }
 
-.site-nav a:hover {
-    border-color: var(--ring-light);
-    color: var(--text);
-}
+.accesos a:hover { border-color: var(--marca); }
 
-.site-nav a.active {
-    color: var(--text);
-    border-color: var(--ring-mid);
-    background: rgba(238, 243, 255, 0.1);
-}
+.oculto { display: none !important; }
 
-.nav-user {
-    margin-left: auto;
-    font-size: 0.78rem;
-    color: var(--text-dim);
-    letter-spacing: 0.03em;
-    white-space: nowrap;
-}
-
-.hidden { display: none !important; }
-
-@media (max-width: 600px) {
-    .contenedor-principal { padding: 24px 16px; }
-    .nav-user { margin-left: 0; width: 100%; }
-    .role-switch { grid-template-columns: 1fr; }
+@media (max-width: 820px) {
+    .columnas { grid-template-columns: 1fr; }
+    .barra { padding: 14px 20px; flex-wrap: wrap; }
+    .barra nav { margin: 0; }
+    .contenido { padding: 28px 20px; }
 }

@@ -1,112 +1,64 @@
 # RestoApp
 
-Sistema de pedidos para restaurante, construido como **MPA** (varias páginas
-HTML estáticas) sobre Firebase Authentication y Realtime Database.
+Sistema de pedidos para restaurante. MPA estática (HTML + CSS + JS sin build
+tooling) conectada a Firebase Realtime Database y Firebase Authentication.
 
-Hay dos perfiles con paneles separados:
+## Cómo funciona
 
-| Perfil | Página | Qué puede hacer |
-| --- | --- | --- |
-| **Administrador** | `admin.html` | Crear, editar, ocultar y eliminar productos (nombre, precio, stock). Crear, desactivar y eliminar cuentas de mesero. |
-| **Mesero** | `pedido.html` | Armar pedidos con los platos del menú. El precio unitario viene del producto y es de **solo lectura**. |
+- **Los clientes** entran a `pedido.html`, eligen un plato del menú, indican la
+  cantidad y confirman. El pedido queda guardado. No necesitan cuenta.
+- **El administrador** entra con correo y contraseña a `admin.html`, donde crea,
+  edita y elimina los platos del menú, y ve los pedidos que van llegando.
+
+El precio siempre lo define el administrador: en la página de pedido el campo
+de precio es de solo lectura y se completa solo al elegir un plato.
 
 ## Páginas
 
-- `index.html` — portada pública con accesos a cada panel.
-- `login.html` — acceso con selector **Mesero / Administrador**.
-- `pedido.html` — panel del mesero (pedido actual + historial propio).
-- `admin.html` — panel de administración (pestañas Productos y Meseros).
+| Archivo | Acceso | Qué hace |
+|---|---|---|
+| `index.html` | Público | Portada con los dos accesos |
+| `pedido.html` | Público | Menú y formulario de pedido |
+| `login.html` | Público | Acceso del administrador |
+| `admin.html` | Requiere sesión | Gestión de productos + pedidos recibidos |
 
 ## Módulos JavaScript
 
-Todos son IIFE clásicos (sin build tooling) que publican un único objeto global:
-
 | Archivo | Responsabilidad |
-| --- | --- |
-| `js/firebase-config.js` | Inicialización del SDK. |
-| `js/icons.js` | `RestoIcons` — iconos SVG inline (`<span data-icon="stock">`). |
-| `js/formato.js` | `RestoFormato` — moneda, fecha y código legible de pedido. |
-| `js/roles.js` | `RestoRoles` — lectura/escritura de `/usuarios/{uid}` (rol y estado). |
-| `js/auth.js` | `RestoAuth` — sesión, selector de rol, guards y navegación. |
-| `js/menu.js` | `RestoMenu` — capa de datos de `/menu` (validar, CRUD, stock). |
-| `js/productos.js` | Panel de admin: tabla y formulario de productos. |
-| `js/meseros.js` | Panel de admin: alta y gestión de cuentas de mesero. |
-| `js/pedidos.js` | Panel del mesero: carrito, totales, registro e historial. |
-| `js/tabs.js` | Pestañas del panel de administración. |
-| `js/starfield.js` | Fondo animado. |
+|---|---|
+| `js/firebase-config.js` | Credenciales e inicialización de Firebase |
+| `js/comun.js` | Formato de moneda y fecha, mensajes, navegación activa |
+| `js/auth.js` | Acceso, cierre de sesión y protección de `admin.html` |
+| `js/menu.js` | Lectura y escritura de `/menu` (con validación) |
+| `js/pedido.js` | Página de pedido |
+| `js/admin.js` | Panel de administración |
 
-## Modelo de datos (Realtime Database)
+## Datos en Realtime Database
 
 ```
-/usuarios/{uid}
-    nombre, email, rol: "admin" | "mesero", activo: bool, createdBy, createdAt
-
-/menu/{productoId}
-    name, price, stock, activo: bool, createdAt, updatedAt
-
-/pedidos/{pedidoId}
-    codigo: "P-DDMM-XXXX", meseroUid, meseroNombre,
-    items: [{ productoId, name, price, cantidad, importe }],
-    subtotal, iva, total, estado, createdAt
+/menu/{id}      -> { name, price, createdAt }
+/pedidos/{id}   -> { productoId, name, price, cantidad, total, createdAt }
 ```
-
-Firebase Auth solo dice **quién** eres; el **rol** vive en `/usuarios/{uid}`.
-Un usuario autenticado sin registro de rol no entra a ningún panel.
-
-### Código de pedido
-
-Firebase genera claves como `-P-M_hcjwaeYcxYuUM4X`, que no sirven para dictar
-en voz alta. Cada pedido guarda además un `codigo` legible con fecha y un tramo
-corto derivado de esa clave: `P-1908-M4X7`. Es lo que se muestra en pantalla y
-en el historial; la clave interna nunca aparece en la interfaz.
 
 ## Puesta en marcha
 
-1. Servir la carpeta con un servidor local (Live Server, `python3 -m http.server`,
-   etc.). Abrir los archivos con `file://` rompe Firebase Auth.
-2. En la consola de Firebase, habilitar **Authentication → Correo/contraseña**.
-3. Publicar las reglas de `database.rules.json` en **Realtime Database → Reglas**.
-4. Crear el **primer administrador**: abrir `login.html`, elegir el perfil
-   *Administrador*, llenar correo y contraseña y usar "Crear administrador
-   inicial". Ese formulario solo funciona mientras no exista ningún admin;
-   después, las cuentas nuevas se crean desde el panel.
-5. Desde `admin.html` → pestaña **Meseros**, dar de alta a cada mesero con su
-   correo y una contraseña temporal.
+1. **Crear la cuenta de administrador**: en Firebase Console → Authentication →
+   Users → *Add user*, con correo y contraseña. No hay registro público:
+   las cuentas se crean solo desde la consola.
+2. **Publicar las reglas**: copiar el contenido de `database.rules.json` en
+   Firebase Console → Realtime Database → Reglas → Publicar.
+3. **Abrir el proyecto** con un servidor local (Live Server, o
+   `python3 -m http.server`), no con `file://`, para que Firebase Auth funcione.
 
 ## Seguridad
 
-- Los guards de `auth.js` son de experiencia de usuario; la barrera real son las
-  reglas de `database.rules.json`, que validan el rol del `uid` en el servidor.
-- Reglas aplicadas: el menú es de lectura pública, pero solo un admin lo
-  escribe; el mesero únicamente puede modificar `stock` (el descuento del
-  pedido); un pedido solo puede crearlo el mesero dueño del `meseroUid`, con la
-  cuenta activa, y no se puede editar después.
-- Integridad de los pedidos validada en el servidor: el `precio` de cada línea
-  debe coincidir con el precio vigente en `/menu`, `importe` debe ser
-  `price × cantidad` y `total` debe ser `subtotal + iva`. Un cliente manipulado
-  no puede registrar un pedido con precios o totales inventados.
-- Lectura acotada: `/usuarios` completo solo lo lee un admin (cada usuario lee
-  su propio registro), y un mesero solo puede consultar el historial filtrando
-  por su propio `meseroUid`.
-- El bootstrap del primer admin lo autoriza el servidor, no el cliente: la regla
-  solo permite auto-asignarse el rol `admin` mientras `/usuarios` esté vacío.
-- **Limitación conocida**: cualquier usuario con rol puede escribir `stock`
-  (lo necesitan tanto el descuento del pedido como la devolución si el registro
-  falla). Restringirlo a "solo descuentos derivados de un pedido real" requiere
-  Cloud Functions o un backend propio.
-- El stock se descuenta con **transacciones**: si dos meseros piden a la vez las
-  últimas unidades, una de las dos operaciones se aborta y se avisa en pantalla,
-  en vez de dejar el inventario en negativo.
-- Al crear un mesero se usa una **instancia secundaria** de Firebase
-  (`firebase.initializeApp(config, 'creador')`) para que el alta no cierre la
-  sesión del administrador.
-- Eliminar un mesero borra su registro de rol (queda sin acceso). La cuenta de
-  Firebase Authentication en sí solo puede borrarse desde la consola o con el
-  Admin SDK, que requiere backend.
-- `apiKey` y los demás campos de `firebase-config.js` son públicos por diseño
-  del SDK web; la seguridad la dan Authentication y las reglas.
+Las reglas de `database.rules.json` son la barrera real, no el JavaScript del
+cliente:
 
-## Pruebas
-
-`tests/manual-checklist.md` contiene el recorrido manual de las cuatro páginas
-(casos de éxito y de error).
+- `/menu` se lee sin sesión (el menú es público) pero solo se escribe con
+  sesión iniciada.
+- `/pedidos` acepta pedidos nuevos de cualquiera, pero solo un usuario
+  autenticado puede leerlos o modificarlos.
+- Cada campo se valida por tipo y rango, y `$otro: false` bloquea campos no
+  previstos. El `total` se verifica contra `price * cantidad`, así que no se
+  puede guardar un pedido con un total alterado.
