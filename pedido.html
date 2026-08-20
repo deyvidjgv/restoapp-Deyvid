@@ -2,48 +2,115 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>RestoApp - Tomar Pedido</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>RestoApp - Panel del mesero</title>
     <link rel="icon" type="image/png" href="img/favicon.png">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body data-page="pedido">
 
-<div class="contenedor-principal">
+<div class="contenedor-principal contenedor-ancho">
     <nav class="site-nav">
-        <a href="index.html" data-nav="index">Inicio</a>
-        <a href="pedido.html" data-nav="pedido">Pedido</a>
-        <a href="admin.html" id="navAdminLink" data-nav="admin" class="hidden">Admin</a>
-        <a href="login.html" id="navLoginLink" data-nav="login">Acceso</a>
-        <button id="navLogoutBtn" class="btn-secondary hidden">Cerrar sesión</button>
+        <a href="index.html" data-nav="index"><span data-icon="inicio"></span>Inicio</a>
+        <a href="pedido.html" id="navPedidoLink" data-nav="pedido" class="hidden"><span data-icon="pedido"></span>Pedido</a>
+        <a href="admin.html" id="navAdminLink" data-nav="admin" class="hidden"><span data-icon="admin"></span>Admin</a>
+        <a href="login.html" id="navLoginLink" data-nav="login"><span data-icon="login"></span>Acceso</a>
+        <span id="navUser" class="nav-user hidden"></span>
+        <button id="navLogoutBtn" class="btn-secondary hidden"><span data-icon="logout"></span>Cerrar sesión</button>
     </nav>
 
-    <h2>RestoApp - Mesero V1.0</h2>
+    <h2>Panel del mesero</h2>
 
-    <div id="form">
-        <div class="item">
-            <label for="a">Plato</label>
-            <select id="a">
-                <option value="">--Cargando menú--</option>
-            </select>
+    <p id="pageStatus" class="status-msg">Verificando sesión...</p>
+
+    <div id="pageContent" class="hidden">
+        <div class="panel">
+            <h3><span data-icon="plato"></span>Agregar plato</h3>
+            <div class="grid-form">
+                <div class="item">
+                    <label for="platoSelect">Plato</label>
+                    <select id="platoSelect">
+                        <option value="">--Cargando menú--</option>
+                    </select>
+                </div>
+                <div class="item">
+                    <label for="cantidadInput">Cantidad</label>
+                    <input type="number" id="cantidadInput" placeholder="Ej: 2" min="1" step="1">
+                </div>
+                <div class="item">
+                    <label for="precioInput">Precio unitario ($)</label>
+                    <!-- Solo lectura: el precio lo define el administrador al
+                         crear o editar el producto. -->
+                    <input type="text" id="precioInput" value="" readonly aria-readonly="true">
+                    <span class="field-hint">Definido por el administrador</span>
+                </div>
+            </div>
+            <p id="stockInfo" class="field-hint"></p>
+            <button id="agregarBtn"><span data-icon="crear"></span>Agregar al pedido</button>
+            <div id="formMsg" class="form-msg" role="status" aria-live="polite"></div>
         </div>
-        <div class="item">
-            <label for="b">Cantidad</label>
-            <input type="number" id="b" placeholder="Ej: 2" min="1">
+
+        <div class="panel">
+            <h3><span data-icon="ticket"></span>Pedido actual</h3>
+            <div class="tabla-scroll">
+                <table class="tabla" id="tablaPedido">
+                    <thead>
+                        <tr>
+                            <th>Plato</th>
+                            <th>Cant.</th>
+                            <th>Precio</th>
+                            <th>Importe</th>
+                            <th class="col-acciones"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="pedidoBody">
+                        <tr><td colspan="5" class="tabla-vacia">Aún no has agregado platos.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <dl class="totales">
+                <div><dt>Subtotal</dt><dd id="totalSubtotal">$0</dd></div>
+                <div><dt>IVA (19%)</dt><dd id="totalIva">$0</dd></div>
+                <div class="total-final"><dt>Total</dt><dd id="totalFinal">$0</dd></div>
+            </dl>
+
+            <div class="acciones-fila">
+                <button id="procesarBtn"><span data-icon="guardar"></span>PROCESAR TODO</button>
+                <button id="vaciarBtn" class="btn-secondary"><span data-icon="cancelar"></span>Vaciar</button>
+            </div>
+            <div id="resultado" class="resultado hidden" role="status" aria-live="polite"></div>
         </div>
-        <div class="item">
-            <label for="p">Precio unitario ($)</label>
-            <input type="number" id="p" placeholder="Ej: 15000" min="0">
+
+        <div class="panel">
+            <h3><span data-icon="historial"></span>Mis últimos pedidos</h3>
+            <div class="tabla-scroll">
+                <table class="tabla" id="tablaHistorial">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Fecha</th>
+                            <th>Platos</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historialBody">
+                        <tr><td colspan="4" class="tabla-vacia">Cargando historial...</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
-        <button id="btn">PROCESAR TODO</button>
     </div>
-
-    <div id="res" class="resultado"></div>
 </div>
 
 <script src="js/starfield.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 <script src="js/firebase-config.js"></script>
+<script src="js/icons.js"></script>
+<script src="js/formato.js"></script>
+<script src="js/roles.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/menu.js"></script>
 <script src="js/pedidos.js"></script>

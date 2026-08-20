@@ -1,60 +1,99 @@
-RestoApp - Taller de Refactorización y Uso de IA
+# RestoApp
 
-Resumen
-- Proyecto base (legacy) para que estudiantes practiquen refactorización: [index.html](index.html).
-- Contiene malas prácticas intencionales (variables globales, autenticación en cliente, lógica monolítica) pero es funcional y conectado a Firebase Realtime Database en:
-  https://restoapp-clase-default-rtdb.firebaseio.com/menu.json
+Sistema de pedidos para restaurante, construido como **MPA** (varias páginas
+HTML estáticas) sobre Firebase Authentication y Realtime Database.
 
-Objetivo del taller
-- Transformar esta base en una MPA (Multiple Page Application) bien estructurada y modular.
-- Enseñar a usar la IA como asistente para revisar, proponer y aplicar refactorizaciones.
+Hay dos perfiles con paneles separados:
 
-Instrucciones rápidas
-1. Abrir `index.html` en el navegador (doble clic). El proyecto es estático.
-2. Revisar el código y buscar los TODOs y comentarios que indican malas prácticas.
+| Perfil | Página | Qué puede hacer |
+| --- | --- | --- |
+| **Administrador** | `admin.html` | Crear, editar, ocultar y eliminar productos (nombre, precio, stock). Crear, desactivar y eliminar cuentas de mesero. |
+| **Mesero** | `pedido.html` | Armar pedidos con los platos del menú. El precio unitario viene del producto y es de **solo lectura**. |
 
-Ejercicios sugeridos (orden recomendado)
-- Ejercicio 1 — Convertir a MPA
-  - Separar vistas en varios archivos HTML (p. ej. `index.html`, `login.html`, `admin.html`, `pedido.html`).
-  - Mantener un único `styles.css` en `css/styles.css` y enlazarlo desde cada HTML.
+## Páginas
 
-- Ejercicio 2 — Modularizar JavaScript
-  - Extraer funciones a archivos JS por responsabilidad (p. ej. `menu.js`, `auth.js`, `pedidos.js`).
-  - Evitar variables globales; usar módulos ES o patrones IIFE.
+- `index.html` — portada pública con accesos a cada panel.
+- `login.html` — acceso con selector **Mesero / Administrador**.
+- `pedido.html` — panel del mesero (pedido actual + historial propio).
+- `admin.html` — panel de administración (pestañas Productos y Meseros).
 
-- Ejercicio 3 — Mejorar autenticación y seguridad
-  - No dejar credenciales en cliente. Implementar (si se desea) un backend mínimo o usar Firebase Auth.
-  - Agregar reglas de seguridad en Realtime Database para restringir escritura.
+## Módulos JavaScript
 
-- Ejercicio 4 — Limpieza y pruebas
-  - Eliminar código muerto y funciones obsoletas.
-  - Añadir validaciones más estrictas y mensajes de error más claros.
-  - Escribir pruebas manuales o automatizadas (si conocen alguna herramienta simple).
+Todos son IIFE clásicos (sin build tooling) que publican un único objeto global:
 
-- Ejercicio 5 — Buenas prácticas
-  - Separar lógica de negocio de manipulación DOM.
-  - Añadir manejo de errores robusto y feedback al usuario.
+| Archivo | Responsabilidad |
+| --- | --- |
+| `js/firebase-config.js` | Inicialización del SDK. |
+| `js/icons.js` | `RestoIcons` — iconos SVG inline (`<span data-icon="stock">`). |
+| `js/formato.js` | `RestoFormato` — moneda, fecha y código legible de pedido. |
+| `js/roles.js` | `RestoRoles` — lectura/escritura de `/usuarios/{uid}` (rol y estado). |
+| `js/auth.js` | `RestoAuth` — sesión, selector de rol, guards y navegación. |
+| `js/menu.js` | `RestoMenu` — capa de datos de `/menu` (validar, CRUD, stock). |
+| `js/productos.js` | Panel de admin: tabla y formulario de productos. |
+| `js/meseros.js` | Panel de admin: alta y gestión de cuentas de mesero. |
+| `js/pedidos.js` | Panel del mesero: carrito, totales, registro e historial. |
+| `js/tabs.js` | Pestañas del panel de administración. |
+| `js/starfield.js` | Fondo animado. |
 
-Uso de la IA como asistente
-- Pide a la IA que haga cambios pequeños y justificables: "Refactoriza `tomarTodo()` separando cálculos de impuestos.".
-- Ejemplos de prompts útiles:
-  - "Sugiéreme una estructura de archivos para convertir esto en una MPA." 
-  - "Refactoriza este archivo para eliminar variables globales y exportar funciones como módulo." 
-  - "Detecta y lista las malas prácticas en `index.html`." 
-- Pide a la IA que aplique cambios con parches (apply_patch) y que deje comentarios TODO para los estudiantes.
+## Modelo de datos (Realtime Database)
 
-Entregables esperados
-- Una versión MPA con archivos HTML separados.
-- Un archivo `css/styles.css` que unifique estilos.
-- Carpeta `js/` con módulos claros y sin variables globales.
-- Un breve `CHANGELOG.md` o un PR/commit donde se describan las refactorizaciones.
+```
+/usuarios/{uid}
+    nombre, email, rol: "admin" | "mesero", activo: bool, createdBy, createdAt
 
-Notas finales
-- El repositorio contiene intencionalmente malas prácticas para que los estudiantes las identifiquen y corrijan.
-- Mantener un flujo de trabajo en branches y commits pequeños ayuda a usar la IA para revisiones iterativas.
+/menu/{productoId}
+    name, price, stock, activo: bool, createdAt, updatedAt
 
-Si quieres, puedo:
-- Añadir comentarios TODO directamente dentro de `index.html` para guiar a los estudiantes.
-- Generar una estructura de archivos inicial (carpetas `css/`, `js/`, `pages/`) y mover/crear archivos básicos.
+/pedidos/{pedidoId}
+    codigo: "P-DDMM-XXXX", meseroUid, meseroNombre,
+    items: [{ productoId, name, price, cantidad, importe }],
+    subtotal, iva, total, estado, createdAt
+```
 
-Autor: Instructor (plantilla para taller)
+Firebase Auth solo dice **quién** eres; el **rol** vive en `/usuarios/{uid}`.
+Un usuario autenticado sin registro de rol no entra a ningún panel.
+
+### Código de pedido
+
+Firebase genera claves como `-P-M_hcjwaeYcxYuUM4X`, que no sirven para dictar
+en voz alta. Cada pedido guarda además un `codigo` legible con fecha y un tramo
+corto derivado de esa clave: `P-1908-M4X7`. Es lo que se muestra en pantalla y
+en el historial; la clave interna nunca aparece en la interfaz.
+
+## Puesta en marcha
+
+1. Servir la carpeta con un servidor local (Live Server, `python3 -m http.server`,
+   etc.). Abrir los archivos con `file://` rompe Firebase Auth.
+2. En la consola de Firebase, habilitar **Authentication → Correo/contraseña**.
+3. Publicar las reglas de `database.rules.json` en **Realtime Database → Reglas**.
+4. Crear el **primer administrador**: abrir `login.html`, elegir el perfil
+   *Administrador*, llenar correo y contraseña y usar "Crear administrador
+   inicial". Ese formulario solo funciona mientras no exista ningún admin;
+   después, las cuentas nuevas se crean desde el panel.
+5. Desde `admin.html` → pestaña **Meseros**, dar de alta a cada mesero con su
+   correo y una contraseña temporal.
+
+## Seguridad
+
+- Los guards de `auth.js` son de experiencia de usuario; la barrera real son las
+  reglas de `database.rules.json`, que validan el rol del `uid` en el servidor.
+- Reglas aplicadas: el menú es de lectura pública, pero solo un admin lo
+  escribe; el mesero únicamente puede modificar `stock` (el descuento del
+  pedido); un pedido solo puede crearlo el mesero dueño del `meseroUid` y no se
+  puede editar después.
+- El stock se descuenta con **transacciones**: si dos meseros piden a la vez las
+  últimas unidades, una de las dos operaciones se aborta y se avisa en pantalla,
+  en vez de dejar el inventario en negativo.
+- Al crear un mesero se usa una **instancia secundaria** de Firebase
+  (`firebase.initializeApp(config, 'creador')`) para que el alta no cierre la
+  sesión del administrador.
+- Eliminar un mesero borra su registro de rol (queda sin acceso). La cuenta de
+  Firebase Authentication en sí solo puede borrarse desde la consola o con el
+  Admin SDK, que requiere backend.
+- `apiKey` y los demás campos de `firebase-config.js` son públicos por diseño
+  del SDK web; la seguridad la dan Authentication y las reglas.
+
+## Pruebas
+
+`tests/manual-checklist.md` contiene el recorrido manual de las cuatro páginas
+(casos de éxito y de error).

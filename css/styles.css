@@ -22,6 +22,7 @@
     --text-dim: #b9c6ec;
 
     --danger: #ff6b81;
+    --warning: #ffcf70;
     --success: #6ee7c8;
 }
 
@@ -46,10 +47,15 @@ body {
 }
 
 .contenedor-principal {
-    width: 420px;
+    width: 100%;
+    max-width: 420px;
     margin: auto;
-    padding: 40px 32px;
+    padding: 40px 24px;
 }
+
+/* Los paneles con tablas (admin y mesero) necesitan más ancho que los
+   formularios simples de inicio y acceso. */
+.contenedor-ancho { max-width: 880px; }
 
 h2 {
     color: var(--text);
@@ -64,12 +70,38 @@ h3 {
     color: var(--text-dim);
     font-size: 1.1rem;
     letter-spacing: 0.02em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 0;
 }
 
 p { color: var(--text-dim); font-size: 0.95rem; }
 
+code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: rgba(5, 10, 28, 0.6);
+    border: 1px solid rgba(140, 165, 255, 0.22);
+    border-radius: 5px;
+    padding: 1px 5px;
+    font-size: 0.85em;
+}
+
+/* --- Iconos --- */
+.icon {
+    width: 1.05em;
+    height: 1.05em;
+    flex: none;
+    vertical-align: -0.15em;
+}
+
+[data-icon] {
+    display: inline-flex;
+    align-items: center;
+}
+
 /* --- Paneles ("glass card" sobre el fondo estrellado) --- */
-#form, .auth-box, .product-form, .resultado {
+.panel, .auth-box, .resultado {
     background: linear-gradient(180deg, rgba(28, 43, 92, 0.72) 0%, rgba(13, 22, 56, 0.72) 100%);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
@@ -77,7 +109,19 @@ p { color: var(--text-dim); font-size: 0.95rem; }
     border-radius: 14px;
     padding: 24px;
     box-shadow: 0 20px 60px rgba(4, 8, 26, 0.55);
+    margin-bottom: 20px;
 }
+
+.panel-info { margin-top: 24px; }
+
+.lista-info {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    padding-left: 20px;
+    margin: 0;
+}
+
+.lista-info li { margin-bottom: 8px; }
 
 .item {
     display: flex;
@@ -92,6 +136,19 @@ p { color: var(--text-dim); font-size: 0.95rem; }
     color: var(--text-dim);
     letter-spacing: 0.03em;
     text-transform: uppercase;
+}
+
+.grid-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0 16px;
+}
+
+.field-hint {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    opacity: 0.85;
+    margin: 0 0 10px;
 }
 
 /* --- Inputs y select --- */
@@ -114,6 +171,19 @@ input:focus, select:focus {
     box-shadow: 0 0 0 3px rgba(110, 140, 255, 0.18);
 }
 
+input:disabled, select:disabled, button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+/* El precio unitario en el panel del mesero: visible pero claramente no editable. */
+input[readonly] {
+    background: rgba(5, 10, 28, 0.55);
+    border-style: dashed;
+    color: var(--text-dim);
+    cursor: default;
+}
+
 /* --- Botones (anillo del planeta como referencia) --- */
 button {
     background: linear-gradient(180deg, var(--ring-light) 0%, var(--ring-mid) 55%, var(--ring-dark) 100%);
@@ -125,17 +195,18 @@ button {
     font-weight: 600;
     font-family: inherit;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
-button:hover {
+button:hover:not(:disabled) {
     box-shadow: 0 0 16px rgba(238, 243, 255, 0.5);
     transform: translateY(-1px);
 }
 
-button + button { margin-left: 8px; }
-
-/* Acciones secundarias (cerrar sesión, crear cuenta) con menor énfasis que la acción primaria */
 button.btn-secondary {
     background: transparent;
     color: var(--text-dim);
@@ -143,31 +214,245 @@ button.btn-secondary {
     font-weight: 500;
 }
 
-button.btn-secondary:hover {
+button.btn-secondary:hover:not(:disabled) {
     box-shadow: none;
     border-color: var(--ring-light);
     color: var(--text);
     transform: none;
 }
 
-#btn { margin-top: 6px; width: 100%; }
+.acciones-fila {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 4px;
+}
 
-.resultado { margin-top: 20px; font-weight: bold; color: var(--text); }
+/* Botones de acción dentro de las tablas */
+button.btn-icono {
+    background: transparent;
+    border: 1px solid rgba(238, 243, 255, 0.22);
+    color: var(--text-dim);
+    padding: 6px;
+    border-radius: 7px;
+}
+
+button.btn-icono .icon { width: 1.05rem; height: 1.05rem; }
+
+button.btn-icono:hover:not(:disabled) {
+    color: var(--text);
+    border-color: var(--ring-light);
+    box-shadow: none;
+    transform: none;
+}
+
+button.btn-icono.peligro:hover:not(:disabled) {
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+/* --- Selector de rol (login) --- */
+.role-switch {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+button.role-option {
+    background: rgba(5, 10, 28, 0.5);
+    border: 1px solid rgba(140, 165, 255, 0.3);
+    color: var(--text-dim);
+    font-weight: 500;
+    padding: 14px 10px;
+    flex-direction: column;
+    gap: 6px;
+}
+
+button.role-option .icon { width: 1.4rem; height: 1.4rem; }
+
+button.role-option:hover:not(:disabled) {
+    box-shadow: none;
+    transform: none;
+    border-color: var(--ring-mid);
+    color: var(--text);
+}
+
+button.role-option.active {
+    background: linear-gradient(180deg, rgba(58, 95, 175, 0.55) 0%, rgba(26, 44, 102, 0.55) 100%);
+    border-color: var(--ring-light);
+    color: var(--text);
+    box-shadow: 0 0 18px rgba(110, 140, 255, 0.25);
+}
+
+.bootstrap-box {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px dashed rgba(140, 165, 255, 0.28);
+}
+
+/* --- Pestañas del panel de administración --- */
+.tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+button.tab {
+    background: rgba(5, 10, 28, 0.5);
+    border: 1px solid rgba(140, 165, 255, 0.28);
+    color: var(--text-dim);
+    font-weight: 500;
+    padding: 9px 16px;
+}
+
+button.tab:hover:not(:disabled) {
+    box-shadow: none;
+    transform: none;
+    color: var(--text);
+    border-color: var(--ring-mid);
+}
+
+button.tab.active {
+    background: linear-gradient(180deg, rgba(58, 95, 175, 0.55) 0%, rgba(26, 44, 102, 0.55) 100%);
+    border-color: var(--ring-light);
+    color: var(--text);
+}
+
+/* --- Tablas --- */
+.tabla-scroll {
+    overflow-x: auto;
+    margin-top: 12px;
+}
+
+.tabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    min-width: 480px;
+}
+
+.tabla th, .tabla td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(140, 165, 255, 0.16);
+    vertical-align: middle;
+}
+
+.tabla th {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-dim);
+    font-weight: 600;
+}
+
+.tabla tbody tr:hover { background: rgba(140, 165, 255, 0.06); }
+.tabla tbody tr:last-child td { border-bottom: none; }
+
+.tabla .col-acciones {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.tabla .col-acciones button + button { margin-left: 6px; }
+
+.tabla-vacia {
+    color: var(--text-dim);
+    font-style: italic;
+    text-align: center;
+    padding: 18px 12px;
+}
+
+.fila-edicion { background: rgba(110, 140, 255, 0.1); }
+
+.input-celda {
+    padding: 6px 8px;
+    font-size: 0.88rem;
+    min-width: 90px;
+}
+
+/* --- Badges de estado / stock --- */
+.badge {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    border: 1px solid currentColor;
+    white-space: nowrap;
+}
+
+.badge-ok { color: var(--success); }
+.badge-aviso { color: var(--warning); }
+.badge-alerta { color: var(--danger); }
+.badge-neutro { color: var(--text-dim); }
+
+/* --- Totales del pedido --- */
+.totales {
+    margin: 18px 0 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.totales > div {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+}
+
+.totales dt {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.totales dd {
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.totales .total-final {
+    border-top: 1px solid rgba(140, 165, 255, 0.28);
+    padding-top: 8px;
+    margin-top: 4px;
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+.totales .total-final dt { color: var(--text); font-size: 0.95rem; }
+
+/* --- Mensajes --- */
+.resultado {
+    margin-top: 16px;
+    font-weight: 600;
+    color: var(--success);
+}
+
 .resultado.error { color: var(--danger); }
 
 .auth-box { margin-top: 20px; }
-.auth-msg { margin-top: 8px; color: var(--danger); }
+
+.auth-msg { margin-top: 12px; color: var(--success); min-height: 1.2em; font-size: 0.9rem; }
+.auth-msg.error { color: var(--danger); }
+
+.form-msg { margin-top: 12px; color: var(--success); min-height: 1.2em; font-size: 0.9rem; }
+.form-msg.error { color: var(--danger); }
 
 .status-msg { color: var(--text-dim); font-style: italic; }
 
-.product-form { margin-top: 20px; }
-.prod-msg { margin-top: 8px; color: var(--success); }
-
 /* --- Navegación --- */
 .nav-links { margin-top: 24px; display: flex; flex-direction: column; gap: 12px; }
+
 .nav-links a {
-    display: block;
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
     padding: 12px;
     border-radius: 10px;
     background: linear-gradient(180deg, rgba(28, 43, 92, 0.72) 0%, rgba(13, 22, 56, 0.72) 100%);
@@ -179,17 +464,11 @@ button.btn-secondary:hover {
     letter-spacing: 0.03em;
     transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
+
 .nav-links a:hover {
     border-color: var(--ring-light);
     box-shadow: 0 0 14px rgba(159, 176, 221, 0.45);
 }
-
-.back-link { margin-top: 0; }
-.back-link a {
-    color: var(--star);
-    text-decoration: none;
-}
-.back-link a:hover { text-decoration: underline; }
 
 /* --- Barra de navegación persistente (presente en las 4 páginas) --- */
 .site-nav {
@@ -206,6 +485,9 @@ button.btn-secondary:hover {
 }
 
 .site-nav a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     color: var(--text-dim);
     text-decoration: none;
     border: 1px solid rgba(238, 243, 255, 0.15);
@@ -225,4 +507,18 @@ button.btn-secondary:hover {
     background: rgba(238, 243, 255, 0.1);
 }
 
-.hidden { display: none; }
+.nav-user {
+    margin-left: auto;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+}
+
+.hidden { display: none !important; }
+
+@media (max-width: 600px) {
+    .contenedor-principal { padding: 24px 16px; }
+    .nav-user { margin-left: 0; width: 100%; }
+    .role-switch { grid-template-columns: 1fr; }
+}
