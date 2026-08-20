@@ -1,19 +1,22 @@
 {
   "rules": {
     "usuarios": {
-      ".read": "auth != null",
+      ".read": "auth != null && root.child('usuarios').child(auth.uid).child('rol').val() === 'admin'",
       ".indexOn": ["rol"],
       "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
         ".write": "auth != null && (root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' || (!data.parent().exists() && auth.uid === $uid && newData.child('rol').val() === 'admin'))",
-        ".validate": "!newData.exists() || newData.hasChildren(['rol', 'email'])",
+        ".validate": "!newData.exists() || newData.hasChildren(['rol', 'email', 'activo'])",
         "rol": {
           ".validate": "newData.isString() && (newData.val() === 'admin' || newData.val() === 'mesero')"
         },
-        "email": { ".validate": "newData.isString() && newData.val().length <= 120" },
+        "email": {
+          ".validate": "newData.isString() && newData.val().length > 3 && newData.val().length <= 120 && newData.val().contains('@')"
+        },
         "nombre": { ".validate": "newData.isString() && newData.val().length <= 60" },
         "activo": { ".validate": "newData.isBoolean()" },
-        "createdBy": { ".validate": "newData.isString()" },
-        "createdAt": { ".validate": "newData.isNumber()" },
+        "createdBy": { ".validate": "newData.isString() && newData.val().length <= 128" },
+        "createdAt": { ".validate": "newData.isNumber() && newData.val() > 0" },
         "$otro": { ".validate": false }
       }
     },
@@ -22,31 +25,53 @@
       ".read": true,
       ".write": "auth != null && root.child('usuarios').child(auth.uid).child('rol').val() === 'admin'",
       "$productoId": {
-        ".validate": "!newData.exists() || newData.hasChildren(['name', 'price'])",
+        ".validate": "!newData.exists() || newData.hasChildren(['name', 'price', 'stock', 'activo'])",
         "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
-        "price": { ".validate": "newData.isNumber() && newData.val() > 0" },
+        "price": { ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 100000000" },
         "stock": {
           ".write": "auth != null && root.child('usuarios').child(auth.uid).child('rol').exists()",
-          ".validate": "newData.isNumber() && newData.val() >= 0"
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000 && newData.val() % 1 === 0"
         },
         "activo": { ".validate": "newData.isBoolean()" },
-        "createdAt": { ".validate": "newData.isNumber()" },
-        "updatedAt": { ".validate": "newData.isNumber()" },
+        "createdAt": { ".validate": "newData.isNumber() && newData.val() > 0" },
+        "updatedAt": { ".validate": "newData.isNumber() && newData.val() > 0" },
         "$otro": { ".validate": false }
       }
     },
 
     "pedidos": {
-      ".read": "auth != null && root.child('usuarios').child(auth.uid).child('rol').exists()",
+      ".read": "auth != null && (root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' || (query.orderByChild === 'meseroUid' && query.equalTo === auth.uid))",
       ".indexOn": ["meseroUid"],
       "$pedidoId": {
-        ".write": "auth != null && !data.exists() && newData.child('meseroUid').val() === auth.uid",
-        ".validate": "newData.hasChildren(['codigo', 'meseroUid', 'items', 'total', 'createdAt'])",
+        ".write": "auth != null && !data.exists() && newData.child('meseroUid').val() === auth.uid && root.child('usuarios').child(auth.uid).child('rol').exists() && root.child('usuarios').child(auth.uid).child('activo').val() === true",
+        ".validate": "newData.hasChildren(['codigo', 'meseroUid', 'items', 'subtotal', 'iva', 'total', 'estado', 'createdAt'])",
+        "codigo": { ".validate": "newData.isString() && newData.val().matches(/^P-[0-9]{4}-[A-Z0-9]{4}$/)" },
         "meseroUid": { ".validate": "newData.val() === auth.uid" },
-        "total": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "meseroNombre": { ".validate": "newData.isString() && newData.val().length <= 120" },
+        "estado": { ".validate": "newData.isString() && newData.val() === 'registrado'" },
         "subtotal": { ".validate": "newData.isNumber() && newData.val() >= 0" },
         "iva": { ".validate": "newData.isNumber() && newData.val() >= 0" },
-        "createdAt": { ".validate": "newData.isNumber()" }
+        "total": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() === newData.parent().child('subtotal').val() + newData.parent().child('iva').val()"
+        },
+        "createdAt": { ".validate": "newData.isNumber() && newData.val() > 0" },
+        "items": {
+          ".validate": "newData.hasChildren()",
+          "$indice": {
+            ".validate": "newData.hasChildren(['productoId', 'name', 'price', 'cantidad', 'importe'])",
+            "productoId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128" },
+            "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+            "price": {
+              ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() === root.child('menu').child(newData.parent().child('productoId').val()).child('price').val()"
+            },
+            "cantidad": { ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 100000 && newData.val() % 1 === 0" },
+            "importe": {
+              ".validate": "newData.isNumber() && newData.val() === newData.parent().child('price').val() * newData.parent().child('cantidad').val()"
+            },
+            "$otro": { ".validate": false }
+          }
+        },
+        "$otro": { ".validate": false }
       }
     }
   }

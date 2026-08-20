@@ -262,15 +262,13 @@
     // todavía no hay ningún admin que pueda crearla. A partir de ese momento
     // el autorregistro queda cerrado y las cuentas nuevas (meseros u otros
     // admins) solo se crean desde el panel de administración.
-    function existeAlgunAdmin() {
-        return firebase.database().ref('usuarios')
-            .orderByChild('rol')
-            .equalTo(window.RestoRoles.ADMIN)
-            .limitToFirst(1)
-            .once('value')
-            .then(function (snap) { return snap.exists(); });
-    }
-
+    //
+    // Quién decide si el bootstrap procede es el SERVIDOR: la regla de
+    // /usuarios/{uid} solo acepta que alguien se asigne el rol admin a sí
+    // mismo mientras /usuarios esté vacío. No se consulta antes desde el
+    // cliente porque esa lectura ocurriría sin sesión iniciada (auth == null)
+    // y las reglas la rechazan; además, un chequeo previo sería una condición
+    // de carrera frente a otro bootstrap simultáneo.
     function manejarBootstrapAdmin() {
         var nombre = document.getElementById('bootstrapName').value.trim();
         var email = document.getElementById('email').value.trim();
@@ -290,36 +288,44 @@
         mostrarMensajeLogin('Creando cuenta de administrador...', false);
         suspendGuards = true;
 
-        existeAlgunAdmin()
-            .then(function (existe) {
-                if (existe) {
-                    throw new Error('ADMIN_YA_EXISTE');
-                }
-                return firebase.auth().createUserWithEmailAndPassword(email, pass);
-            })
+        var cuentaCreada = null;
+
+        firebase.auth().createUserWithEmailAndPassword(email, pass)
             .then(function (cred) {
-                return window.RestoRoles
-                    .crearRegistroAdmin(cred.user.uid, { nombre: nombre, email: email })
-                    .then(function () { return cred.user; });
+                cuentaCreada = cred.user;
+                return window.RestoRoles.crearRegistroAdmin(cred.user.uid, { nombre: nombre, email: email });
             })
             .then(function () {
                 suspendGuards = false;
                 window.location.href = 'admin.html';
             })
             .catch(function (err) {
-                suspendGuards = false;
-                setFormularioOcupado(false);
-                if (err && err.message === 'ADMIN_YA_EXISTE') {
-                    mostrarMensajeLogin('Ya existe un administrador. Pídele que cree tu cuenta desde el panel.');
-                    return;
-                }
                 console.error('Bootstrap admin error:', err);
-                mostrarMensajeLogin(mensajeError(err));
-                // Si la cuenta de Auth alcanzó a crearse pero falló el registro
-                // del rol, la sesión quedaría a medias: se cierra para que el
-                // usuario pueda reintentar desde cero.
-                if (firebase.auth().currentUser) logout();
+                // La cuenta de Auth pudo crearse aunque el registro de rol
+                // fallara (p. ej. porque ya existe un admin). Sin rol no puede
+                // entrar a ningún panel, así que se elimina para no dejar
+                // cuentas huérfanas ni bloquear ese correo.
+                return descartarCuentaIncompleta().then(function () {
+                    suspendGuards = false;
+                    setFormularioOcupado(false);
+                    mostrarMensajeLogin(mensajeBootstrap(err));
+                });
             });
+
+        function descartarCuentaIncompleta() {
+            if (!cuentaCreada) return Promise.resolve();
+            return cuentaCreada.delete().catch(function (errBorrado) {
+                console.warn('No se pudo eliminar la cuenta incompleta:', errBorrado);
+                return logout().catch(function () {});
+            });
+        }
+    }
+
+    function mensajeBootstrap(err) {
+        if (err && err.code === 'PERMISSION_DENIED') {
+            return 'Ya existe un administrador. Pídele que cree tu cuenta desde el panel.';
+        }
+        return mensajeError(err);
     }
 
     function setFormularioOcupado(ocupado) {
