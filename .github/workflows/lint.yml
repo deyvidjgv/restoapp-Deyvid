@@ -1,0 +1,35 @@
+name: Lint
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  syntax-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verificar sintaxis de los módulos JS
+        run: |
+          status=0
+          for f in js/*.js; do
+            echo "== $f =="
+            node --check "$f" || status=1
+          done
+          exit $status
+
+      - name: Verificar que el HTML referencia archivos JS existentes
+        run: |
+          status=0
+          for html in *.html; do
+            for src in $(grep -oE 'src="js/[^"]+\.js"' "$html" | sed -E 's/src="//; s/"$//'); do
+              if [ ! -f "$src" ]; then
+                echo "::error file=$html::Referencia a script inexistente: $src"
+                status=1
+              fi
+            done
+          done
+          exit $status
