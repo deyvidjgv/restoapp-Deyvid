@@ -280,6 +280,25 @@
         }).then(function () { return codigo; });
     }
 
+    // El servidor exige que el precio de cada línea coincida con el precio
+    // vigente del producto. Si el administrador lo cambió mientras el mesero
+    // armaba el pedido, se avisa aquí en vez de dejar que la escritura falle
+    // con un error genérico de permisos.
+    function lineasConPrecioDesactualizado() {
+        return carrito.filter(function (linea) {
+            var producto = productosPorId[linea.productoId];
+            return !producto || producto.price !== linea.price;
+        });
+    }
+
+    function sincronizarPrecios() {
+        carrito.forEach(function (linea) {
+            var producto = productosPorId[linea.productoId];
+            if (producto) linea.price = producto.price;
+        });
+        pintarCarrito();
+    }
+
     function procesarPedido() {
         if (procesando) return;
         if (!carrito.length) {
@@ -288,6 +307,14 @@
         }
         if (!usuario) {
             mostrarMensaje('Tu sesión expiró. Vuelve a ingresar.', true);
+            return;
+        }
+
+        var desactualizadas = lineasConPrecioDesactualizado();
+        if (desactualizadas.length) {
+            sincronizarPrecios();
+            mostrarMensaje('El precio de "' + desactualizadas[0].name +
+                '" cambió. Revisa los totales y vuelve a procesar.', true);
             return;
         }
 

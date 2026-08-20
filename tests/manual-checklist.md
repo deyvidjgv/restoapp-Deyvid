@@ -19,7 +19,8 @@ y al menos un mesero dado de alta.
 - [ ] **Bootstrap**: sin ningún admin en la base, crear el administrador inicial
       redirige a `admin.html` y queda registrado en `/usuarios/{uid}` con `rol: "admin"`.
 - [ ] **Bootstrap bloqueado**: con un admin ya existente, el botón responde
-      "Ya existe un administrador...".
+      "Ya existe un administrador..." y **la cuenta de Auth recién creada se
+      elimina** (el mismo correo puede reutilizarse después).
 - [ ] **Éxito mesero**: perfil Mesero + credenciales de mesero → redirige a `pedido.html`.
 - [ ] **Éxito admin**: perfil Administrador + credenciales de admin → redirige a `admin.html`.
 - [ ] **Rol cruzado**: perfil Administrador + credenciales de mesero → cierra la
@@ -82,4 +83,16 @@ y al menos un mesero dado de alta.
 - [ ] Con sesión de **mesero**, escribir `menu/{id}/price` → `permission_denied`
       (solo puede tocar `stock`).
 - [ ] Con sesión de **mesero**, escribir en `/usuarios/{otroUid}` → `permission_denied`.
+- [ ] Con sesión de **mesero**, LEER `/usuarios` completo → `permission_denied`
+      (solo puede leer su propio `/usuarios/{suUid}`).
+- [ ] Con sesión de **mesero**, leer `/pedidos` sin filtro → `permission_denied`;
+      filtrando por su propio `meseroUid` sí funciona.
+- [ ] **Precio manipulado**: crear un pedido cuyo `items/0/price` no coincida con
+      el precio actual de ese producto en `/menu` → `permission_denied`.
+- [ ] **Total manipulado**: crear un pedido con `total` distinto de
+      `subtotal + iva`, o `importe` distinto de `price × cantidad` → `permission_denied`.
+- [ ] **Mesero desactivado**: con `activo: false`, intentar crear un pedido →
+      `permission_denied`.
+- [ ] **Campo extra**: agregar una clave no prevista a un producto o pedido
+      (p. ej. `hackeado: true`) → `permission_denied`.
 - [ ] La lectura del menú (`menu.json`) sigue siendo pública.

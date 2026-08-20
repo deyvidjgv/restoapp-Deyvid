@@ -79,8 +79,21 @@ en el historial; la clave interna nunca aparece en la interfaz.
   reglas de `database.rules.json`, que validan el rol del `uid` en el servidor.
 - Reglas aplicadas: el menú es de lectura pública, pero solo un admin lo
   escribe; el mesero únicamente puede modificar `stock` (el descuento del
-  pedido); un pedido solo puede crearlo el mesero dueño del `meseroUid` y no se
-  puede editar después.
+  pedido); un pedido solo puede crearlo el mesero dueño del `meseroUid`, con la
+  cuenta activa, y no se puede editar después.
+- Integridad de los pedidos validada en el servidor: el `precio` de cada línea
+  debe coincidir con el precio vigente en `/menu`, `importe` debe ser
+  `price × cantidad` y `total` debe ser `subtotal + iva`. Un cliente manipulado
+  no puede registrar un pedido con precios o totales inventados.
+- Lectura acotada: `/usuarios` completo solo lo lee un admin (cada usuario lee
+  su propio registro), y un mesero solo puede consultar el historial filtrando
+  por su propio `meseroUid`.
+- El bootstrap del primer admin lo autoriza el servidor, no el cliente: la regla
+  solo permite auto-asignarse el rol `admin` mientras `/usuarios` esté vacío.
+- **Limitación conocida**: cualquier usuario con rol puede escribir `stock`
+  (lo necesitan tanto el descuento del pedido como la devolución si el registro
+  falla). Restringirlo a "solo descuentos derivados de un pedido real" requiere
+  Cloud Functions o un backend propio.
 - El stock se descuenta con **transacciones**: si dos meseros piden a la vez las
   últimas unidades, una de las dos operaciones se aborta y se avisa en pantalla,
   en vez de dejar el inventario en negativo.
