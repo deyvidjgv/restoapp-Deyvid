@@ -1,32 +1,48 @@
-/* RestoApp - Tema claro, minimalista */
+/* RestoApp - Tema oscuro con fondo animado de estrellas (js/starfield.js) */
 
 :root {
-    --bg: #f5f6f8;
-    --superficie: #ffffff;
-    --borde: #e5e7eb;
-    --texto: #111827;
-    --texto-suave: #6b7280;
+    /* Paleta pedida, usada para el degradado de fondo y los paneles */
+    --fondo-1: #313966;
+    --fondo-2: #314a66;
+    --fondo-3: #3a3166;
+    --fondo-4: #315a66;
+    --fondo-5: #4b3166;
+
+    --superficie: rgba(49, 57, 102, 0.55);
+    --superficie-solida: #2a3157;
+    --borde: rgba(200, 210, 255, 0.22);
+    --texto: #eef1ff;
+    --texto-suave: #b7bfe6;
     --marca: #c0392b;
-    --marca-suave: #fdeceb;
-    --error: #b91c1c;
-    --ok: #15803d;
+    --marca-suave: rgba(192, 57, 43, 0.18);
+    --error: #ff8a80;
+    --ok: #7fe3b4;
 }
 
 * { box-sizing: border-box; }
 
 body {
     margin: 0;
-    background: var(--bg);
+    min-height: 100vh;
     color: var(--texto);
     font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
     font-size: 15px;
     line-height: 1.5;
+    /* js/starfield.js dibuja un <canvas> con z-index:-1 encima de este
+       degradado; acá solo va la "nebulosa" de fondo. */
+    background:
+        radial-gradient(32% 28% at 85% 8%, rgba(75, 49, 102, 0.55) 0%, rgba(75, 49, 102, 0) 70%),
+        radial-gradient(28% 24% at 10% 85%, rgba(49, 90, 102, 0.45) 0%, rgba(49, 90, 102, 0) 70%),
+        radial-gradient(120% 90% at 75% 0%, var(--fondo-3) 0%, var(--fondo-1) 45%, #0c1130 100%);
+    background-attachment: fixed;
 }
 
 /* --- Barra superior --- */
 
 .barra {
-    background: var(--superficie);
+    background: rgba(20, 24, 48, 0.55);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     border-bottom: 1px solid var(--borde);
     padding: 14px 32px;
     display: flex;
@@ -57,11 +73,11 @@ body {
     font-size: 0.92rem;
 }
 
-.barra nav a:hover { background: var(--bg); }
+.barra nav a:hover { background: rgba(255, 255, 255, 0.08); }
 
 .barra nav a.activo {
     background: var(--marca-suave);
-    color: var(--marca);
+    color: #ff8a7a;
 }
 
 .sesion {
@@ -85,6 +101,8 @@ body {
 h1 {
     font-size: 1.75rem;
     margin: 0 0 6px;
+    color: var(--texto);
+    text-shadow: 0 0 24px rgba(120, 150, 255, 0.25);
 }
 
 .subtitulo {
@@ -101,9 +119,12 @@ h1 {
 
 .tarjeta {
     background: var(--superficie);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     border: 1px solid var(--borde);
     border-radius: 10px;
     padding: 22px;
+    box-shadow: 0 16px 44px rgba(4, 6, 20, 0.35);
 }
 
 .tarjeta + .tarjeta { margin-top: 24px; }
@@ -111,6 +132,7 @@ h1 {
 .tarjeta h2 {
     font-size: 1.05rem;
     margin: 0 0 16px;
+    color: var(--texto);
 }
 
 /* --- Tabla --- */
@@ -157,18 +179,21 @@ label {
     display: block;
     font-size: 0.88rem;
     margin: 14px 0 5px;
+    color: var(--texto-suave);
 }
 
 input {
     width: 100%;
     padding: 9px 12px;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--borde);
     border-radius: 6px;
     font-size: 0.95rem;
     font-family: inherit;
-    background: var(--superficie);
+    background: rgba(10, 14, 32, 0.45);
     color: var(--texto);
 }
+
+input::placeholder { color: var(--texto-suave); opacity: 0.65; }
 
 input:focus {
     outline: none;
@@ -176,7 +201,7 @@ input:focus {
 }
 
 input[readonly] {
-    background: #f3f4f6;
+    background: rgba(10, 14, 32, 0.25);
     color: var(--texto-suave);
 }
 
@@ -193,15 +218,15 @@ button {
     font-size: 0.9rem;
     padding: 9px 16px;
     border-radius: 6px;
-    border: 1px solid #d1d5db;
-    background: var(--superficie);
+    border: 1px solid var(--borde);
+    background: rgba(255, 255, 255, 0.06);
     color: var(--texto);
     cursor: pointer;
 }
 
-button:hover:not(:disabled) { background: var(--bg); }
+button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); }
 
-button:disabled { opacity: 0.55; cursor: not-allowed; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 button.principal {
     background: var(--marca);
@@ -215,8 +240,8 @@ button.principal {
 button.principal:hover:not(:disabled) { background: #a93226; }
 
 button.peligro {
-    color: var(--marca);
-    border-color: #f0b9b3;
+    color: #ff9a8d;
+    border-color: rgba(192, 57, 43, 0.5);
 }
 
 button.peligro:hover:not(:disabled) { background: var(--marca-suave); }
@@ -230,8 +255,8 @@ button.peligro:hover:not(:disabled) { background: var(--marca-suave); }
 }
 
 .plato {
-    background: #f3f4f6;
-    border: 1px solid transparent;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--borde);
     border-radius: 8px;
     padding: 16px;
     text-align: left;
@@ -240,14 +265,14 @@ button.peligro:hover:not(:disabled) { background: var(--marca-suave); }
     width: 100%;
 }
 
-.plato:hover:not(:disabled) { background: #eceef1; }
+.plato:hover:not(:disabled) { background: rgba(255, 255, 255, 0.09); }
 
 .plato.elegido {
     border-color: var(--marca);
     background: var(--marca-suave);
 }
 
-.plato .nombre { font-weight: 600; }
+.plato .nombre { font-weight: 600; color: var(--texto); }
 
 .plato .precio {
     color: var(--texto-suave);
@@ -265,6 +290,7 @@ button.peligro:hover:not(:disabled) { background: var(--marca-suave); }
     margin-top: 20px;
     padding-top: 16px;
     font-weight: 700;
+    color: var(--texto);
 }
 
 /* --- Mensajes --- */
@@ -297,6 +323,8 @@ button.peligro:hover:not(:disabled) { background: var(--marca-suave); }
     text-align: center;
     padding: 14px;
     background: var(--superficie);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     border: 1px solid var(--borde);
     border-radius: 8px;
     text-decoration: none;
