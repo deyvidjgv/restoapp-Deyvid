@@ -1,9 +1,12 @@
 // RestoApp - Productos del menú (/menu en Realtime Database)
 //
-// Forma de cada producto:  { name: string, price: number, createdAt: number }
+// Forma de cada producto:        { id, name: string, price: number }
+// Forma de cada registro de log: { id, fecha: string ISO, name: string, price: number }
 //
-// Un solo módulo lee y escribe el menú, así la página de pedido y el panel
-// de administración comparten la misma validación.
+// Cada vez que se crea un producto queda, además de en /menu (el estado
+// actual), una copia histórica en /registroPlatos: ese log nunca se edita ni
+// se borra, así que el nombre esquema queda estable para el flujo de n8n que
+// lee esta base de datos.
 (function () {
     'use strict';
 
@@ -47,17 +50,24 @@
     // push() genera la clave antes de escribir nada: se usa esa misma clave
     // como valor del campo `id`, así el registro queda con su propio id
     // guardado en vez de depender de que quien lo lea lo reconstruya desde
-    // la clave del nodo.
+    // la clave del nodo. La escritura en /menu y /registroPlatos se hace en
+    // una sola actualización multi-ruta para que quede atómica.
     function crear(nombre, precio) {
         var error = validar(nombre, precio);
         if (error) return Promise.reject(new Error(error));
+
         var nuevaRef = ref().push();
-        return nuevaRef.set({
-            id: nuevaRef.key,
+        var logRef = firebase.database().ref('registroPlatos').push();
+
+        var updates = {};
+        updates['menu/' + nuevaRef.key] = { id: nuevaRef.key, name: nombre, price: precio };
+        updates['registroPlatos/' + logRef.key] = {
+            id: logRef.key,
+            fecha: new Date().toISOString(),
             name: nombre,
-            price: precio,
-            createdAt: firebase.database.ServerValue.TIMESTAMP
-        });
+            price: precio
+        };
+        return firebase.database().ref().update(updates);
     }
 
     function actualizar(id, nombre, precio) {
@@ -65,6 +75,7 @@
         if (error) return Promise.reject(new Error(error));
         // Se incluye `id` también al editar para completarlo en productos
         // creados antes de este cambio, que todavía no lo tenían guardado.
+        // Solo se toca /menu: /registroPlatos es un histórico y no se edita.
         return ref(id).update({ id: id, name: nombre, price: precio });
     }
 

@@ -22,13 +22,16 @@ administrador creada desde Firebase Console.
 - [ ] Sin sesión → redirige a `login.html`.
 - [ ] Con sesión: desaparece "Verificando sesión..." y aparece el panel.
 - [ ] **Crear**: nombre + precio válidos → mensaje de éxito, el formulario se
-      limpia y la fila aparece en la tabla sin recargar.
+      limpia, la fila aparece en la tabla sin recargar, y queda un registro
+      nuevo en `/registroPlatos` con la fecha.
 - [ ] **Error nombre vacío** → "Escribe el nombre del producto."
 - [ ] **Error precio** 0, vacío o negativo → "El precio debe ser un número mayor a 0."
 - [ ] **Editar**: el botón convierte la fila en campos; Guardar persiste los
       cambios, Cancelar los descarta.
-- [ ] **Eliminar**: pide confirmación y la fila desaparece.
-- [ ] "Pedidos recibidos" muestra los pedidos, el más reciente primero.
+- [ ] **Eliminar**: pide confirmación y la fila desaparece de `/menu` (el
+      registro en `/registroPlatos` no se toca).
+- [ ] "Pedidos recibidos" muestra los pedidos (leídos de `/registroVentas`),
+      el más reciente primero, con columna "Estado".
 - [ ] "Cerrar sesión" vuelve a `index.html`.
 
 ## pedido.html
@@ -65,5 +68,14 @@ que el JavaScript de la app siga validando antes de guardar:
 - [ ] `menu.html`/`admin.html` siguen rechazando nombre vacío o precio ≤ 0
       **desde la app**, aunque las reglas ya no lo exijan.
 - [ ] `pedido.html` sigue rechazando cantidad inválida **desde la app**.
-- [ ] Sin sesión, leer o escribir `menu.json`/`pedidos.json` con `curl`/Postman
-      → ya no da `permission_denied`, se puede leer y escribir libremente.
+- [ ] Sin sesión, leer o escribir `menu.json`/`registroVentas.json` con
+      `curl`/Postman → ya no da `permission_denied`, se puede leer y escribir
+      libremente.
+
+## Esquema para n8n
+- [ ] Un pedido hecho desde `pedido.html` queda en `/registroVentas` con
+      exactamente estos campos: `id`, `cantidad`, `fecha` (texto ISO 8601),
+      `platoId`, `platoNombre`, `total`, `status`.
+- [ ] Un producto creado desde `admin.html` queda en `/menu` con `id`, `name`,
+      `price`, y además un registro nuevo en `/registroPlatos` con `id`,
+      `fecha`, `name`, `price`.

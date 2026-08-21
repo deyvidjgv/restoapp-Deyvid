@@ -33,22 +33,36 @@ de precio es de solo lectura y se completa solo al elegir un plato.
 | `js/firebase-config.js` | Credenciales e inicialización de Firebase |
 | `js/comun.js` | Formato de moneda y fecha, mensajes, navegación activa |
 | `js/auth.js` | Acceso, cierre de sesión y protección de páginas con sesión |
-| `js/menu.js` | Lectura y escritura de `/menu` (con validación) |
+| `js/menu.js` | Lectura y escritura de `/menu` y `/registroPlatos` (con validación) |
 | `js/pedido.js` | Página de pedido |
 | `js/admin.js` | Panel de administración |
 | `js/comanda.js` | Comanda de cocina: lista pedidos y cambia su estado |
 
 ## Datos en Realtime Database
 
+Este esquema (nombres de colecciones y campos) es el que espera el flujo de
+n8n que consume esta base de datos, así que no se debe renombrar sin avisar:
+
 ```
-/menu/{id}      -> { id, name, price, createdAt }
-/pedidos/{id}   -> { id, productoId, name, price, cantidad, total, status, createdAt }
+/menu/{id}          -> { id, name, price }
+/registroPlatos/{id} -> { id, fecha, name, price }
+/registroVentas/{id} -> { id, cantidad, fecha, platoId, platoNombre, total, status }
 ```
 
-`status` es `"PENDING"` al crear el pedido y pasa a `"IN PROGRESS"` desde
-`comanda.html`. Un pedido guardado antes de este campo se trata como
-`"PENDING"` en la interfaz (no tiene el campo, pero las reglas no lo exigen
-para escrituras existentes).
+- `/menu` es el estado actual del menú: lo que se ve en `pedido.html` y se
+  edita desde `admin.html`.
+- `/registroPlatos` es un histórico de creación de platos: cada vez que se
+  crea un producto en `admin.html` queda, además, una copia acá con la fecha.
+  Nunca se edita ni se borra, ni siquiera si el producto se edita o elimina
+  de `/menu` después.
+- `/registroVentas` es cada pedido hecho desde `pedido.html`. `platoId`
+  apunta a la clave del producto en `/menu`; `platoNombre` es una copia del
+  nombre al momento del pedido (no cambia si el producto se renombra
+  después). `status` es `"PENDING"` al crear el pedido y pasa a
+  `"IN PROGRESS"` desde `comanda.html`. Un registro guardado antes de este
+  campo se trata como `"PENDING"` en la interfaz.
+- `fecha` se guarda como texto ISO 8601 (`new Date().toISOString()`), no
+  como timestamp numérico, para que n8n lo pueda parsear directo.
 
 ## Puesta en marcha
 
@@ -64,7 +78,8 @@ para escrituras existentes).
 
 **Las reglas de `database.rules.json` están completamente abiertas** (`.read`
 y `.write` en `true` para toda la base): cualquiera, tenga o no cuenta, puede
-leer y escribir en `/menu` y `/pedidos` sin ninguna validación de campos. Se
+leer y escribir en cualquier ruta (`/menu`, `/registroPlatos`, `/registroVentas`)
+sin ninguna validación de campos. Se
 dejaron así a propósito, por decisión explícita. El JavaScript del cliente
 (`js/menu.js`, `js/pedido.js`) sigue validando la forma de los datos antes de
 guardarlos, pero eso solo evita errores desde la propia app: no protege

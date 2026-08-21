@@ -93,17 +93,18 @@
 
         var cant = cantidad();
         // push() reserva la clave antes de escribir; se guarda esa misma
-        // clave como `id` dentro del propio registro del pedido.
-        var refPedido = firebase.database().ref('pedidos').push();
-        refPedido.set({
-            id: refPedido.key,
-            productoId: elegido.id,
-            name: elegido.name,
-            price: elegido.price,
+        // clave como `id` dentro del propio registro. Se guarda en
+        // /registroVentas (no /pedidos) para compartir esquema con el flujo
+        // de n8n: cantidad, fecha, platoId, platoNombre, total, status.
+        var refVenta = firebase.database().ref('registroVentas').push();
+        refVenta.set({
+            id: refVenta.key,
             cantidad: cant,
+            fecha: new Date().toISOString(),
+            platoId: elegido.id,
+            platoNombre: elegido.name,
             total: elegido.price * cant,
-            status: 'PENDING',
-            createdAt: firebase.database.ServerValue.TIMESTAMP
+            status: 'PENDING'
         })
             .then(function () {
                 Resto.mensaje('pedidoMsg', 'Pedido enviado: ' + cant + ' x ' + elegido.name + '.');

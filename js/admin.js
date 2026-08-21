@@ -175,8 +175,8 @@
 
         pedidos.forEach(function (pedido) {
             var tr = document.createElement('tr');
-            tr.appendChild(celda(Resto.fecha(pedido.createdAt)));
-            tr.appendChild(celda(pedido.name || '—'));
+            tr.appendChild(celda(Resto.fecha(pedido.fecha)));
+            tr.appendChild(celda(pedido.platoNombre || '—'));
             tr.appendChild(celda(String(pedido.cantidad || 0)));
             tr.appendChild(celda(Resto.moneda(pedido.total)));
             tr.appendChild(celda(pedido.status === 'IN PROGRESS' ? 'En preparación' : 'Pendiente'));
@@ -185,7 +185,7 @@
     }
 
     function escucharPedidos() {
-        firebase.database().ref('pedidos').limitToLast(20).on('value', function (snap) {
+        firebase.database().ref('registroVentas').limitToLast(20).on('value', function (snap) {
             var lista = [];
             snap.forEach(function (hijo) {
                 var val = hijo.val() || {};
@@ -205,8 +205,9 @@
     }
 
     // --- Arranque ---
-    // Se espera a que auth.js confirme la sesión: sin ella, las reglas del
-    // servidor rechazarían la lectura de pedidos.
+    // Se espera a que auth.js confirme la sesión antes de escuchar: este
+    // panel es solo para quien tiene cuenta, aunque las reglas del servidor
+    // ya no lo exijan (están abiertas a propósito).
 
     document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('crearBtn').addEventListener('click', crear);
