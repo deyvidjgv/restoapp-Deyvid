@@ -1,8 +1,9 @@
 // RestoApp - Comanda de cocina
 //
-// Lista todos los pedidos con su estado. La única acción posible es pasar un
-// pedido de "PENDING" a "IN PROGRESS"; los pedidos sin `status` (guardados
-// antes de este cambio) se tratan como "PENDING".
+// Lee /registroVentas (mismo esquema que usa el flujo de n8n: cantidad,
+// fecha, platoId, platoNombre, total, status). La única acción posible es
+// pasar un pedido de "PENDING" a "IN PROGRESS"; los que no tienen `status`
+// (guardados antes de este campo) se tratan como "PENDING".
 (function () {
     'use strict';
 
@@ -23,12 +24,12 @@
 
         var nombre = document.createElement('div');
         nombre.className = 'nombre';
-        nombre.textContent = (pedido.cantidad || 0) + ' x ' + (pedido.name || '—');
+        nombre.textContent = (pedido.cantidad || 0) + ' x ' + (pedido.platoNombre || '—');
         div.appendChild(nombre);
 
         var detalle = document.createElement('div');
         detalle.className = 'precio';
-        detalle.textContent = Resto.fecha(pedido.createdAt) + ' · ' + ETIQUETAS[estado];
+        detalle.textContent = Resto.fecha(pedido.fecha) + ' · ' + ETIQUETAS[estado];
         div.appendChild(detalle);
 
         if (estado === 'PENDING') {
@@ -47,7 +48,7 @@
     }
 
     function cambiarEstado(id, boton) {
-        firebase.database().ref('pedidos').child(id).update({ status: 'IN PROGRESS' })
+        firebase.database().ref('registroVentas').child(id).update({ status: 'IN PROGRESS' })
             .catch(function (err) {
                 console.error('Error actualizando el pedido:', err);
                 Resto.mensaje('comandaMsg', RestoAuth.mensajeError(err), true);
@@ -72,7 +73,7 @@
     }
 
     function escuchar() {
-        firebase.database().ref('pedidos').limitToLast(50).on('value', function (snap) {
+        firebase.database().ref('registroVentas').limitToLast(50).on('value', function (snap) {
             var lista = [];
             snap.forEach(function (hijo) {
                 var val = hijo.val() || {};
