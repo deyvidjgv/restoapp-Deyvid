@@ -44,10 +44,16 @@
         });
     }
 
+    // push() genera la clave antes de escribir nada: se usa esa misma clave
+    // como valor del campo `id`, así el registro queda con su propio id
+    // guardado en vez de depender de que quien lo lea lo reconstruya desde
+    // la clave del nodo.
     function crear(nombre, precio) {
         var error = validar(nombre, precio);
         if (error) return Promise.reject(new Error(error));
-        return ref().push({
+        var nuevaRef = ref().push();
+        return nuevaRef.set({
+            id: nuevaRef.key,
             name: nombre,
             price: precio,
             createdAt: firebase.database.ServerValue.TIMESTAMP
@@ -57,7 +63,9 @@
     function actualizar(id, nombre, precio) {
         var error = validar(nombre, precio);
         if (error) return Promise.reject(new Error(error));
-        return ref(id).update({ name: nombre, price: precio });
+        // Se incluye `id` también al editar para completarlo en productos
+        // creados antes de este cambio, que todavía no lo tenían guardado.
+        return ref(id).update({ id: id, name: nombre, price: precio });
     }
 
     function eliminar(id) {
