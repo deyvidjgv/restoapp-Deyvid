@@ -92,7 +92,11 @@
         Resto.mensaje('pedidoMsg', 'Enviando pedido...');
 
         var cant = cantidad();
-        firebase.database().ref('pedidos').push({
+        // push() reserva la clave antes de escribir; se guarda esa misma
+        // clave como `id` dentro del propio registro del pedido.
+        var refPedido = firebase.database().ref('pedidos').push();
+        refPedido.set({
+            id: refPedido.key,
             productoId: elegido.id,
             name: elegido.name,
             price: elegido.price,
