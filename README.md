@@ -6,9 +6,12 @@ tooling) conectada a Firebase Realtime Database y Firebase Authentication.
 ## Cómo funciona
 
 - **Los clientes** entran a `pedido.html`, eligen un plato del menú, indican la
-  cantidad y confirman. El pedido queda guardado. No necesitan cuenta.
+  cantidad y confirman. El pedido queda guardado con estado `PENDING`. No
+  necesitan cuenta.
 - **El administrador** entra con correo y contraseña a `admin.html`, donde crea,
   edita y elimina los platos del menú, y ve los pedidos que van llegando.
+- **Cocina** entra con la misma cuenta a `comanda.html`, donde ve todos los
+  pedidos con su estado y puede pasarlos de "Pendiente" a "En preparación".
 
 El precio siempre lo define el administrador: en la página de pedido el campo
 de precio es de solo lectura y se completa solo al elegir un plato.
@@ -21,6 +24,7 @@ de precio es de solo lectura y se completa solo al elegir un plato.
 | `pedido.html` | Público | Menú y formulario de pedido |
 | `login.html` | Público | Acceso del administrador |
 | `admin.html` | Requiere sesión | Gestión de productos + pedidos recibidos |
+| `comanda.html` | Requiere sesión | Comanda de cocina: pedidos y cambio de estado |
 
 ## Módulos JavaScript
 
@@ -28,17 +32,23 @@ de precio es de solo lectura y se completa solo al elegir un plato.
 |---|---|
 | `js/firebase-config.js` | Credenciales e inicialización de Firebase |
 | `js/comun.js` | Formato de moneda y fecha, mensajes, navegación activa |
-| `js/auth.js` | Acceso, cierre de sesión y protección de `admin.html` |
+| `js/auth.js` | Acceso, cierre de sesión y protección de páginas con sesión |
 | `js/menu.js` | Lectura y escritura de `/menu` (con validación) |
 | `js/pedido.js` | Página de pedido |
 | `js/admin.js` | Panel de administración |
+| `js/comanda.js` | Comanda de cocina: lista pedidos y cambia su estado |
 
 ## Datos en Realtime Database
 
 ```
-/menu/{id}      -> { name, price, createdAt }
-/pedidos/{id}   -> { productoId, name, price, cantidad, total, createdAt }
+/menu/{id}      -> { id, name, price, createdAt }
+/pedidos/{id}   -> { id, productoId, name, price, cantidad, total, status, createdAt }
 ```
+
+`status` es `"PENDING"` al crear el pedido y pasa a `"IN PROGRESS"` desde
+`comanda.html`. Un pedido guardado antes de este campo se trata como
+`"PENDING"` en la interfaz (no tiene el campo, pero las reglas no lo exigen
+para escrituras existentes).
 
 ## Puesta en marcha
 

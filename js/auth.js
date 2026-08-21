@@ -1,10 +1,12 @@
 // RestoApp - Acceso del administrador
 //
 // Solo hay un tipo de cuenta: el administrador. Los clientes hacen pedidos
-// sin iniciar sesión, así que la única página protegida es admin.html.
+// sin iniciar sesión; las páginas que requieren esa misma cuenta (gestión de
+// menú y comanda de cocina) se listan en PAGINAS_PROTEGIDAS.
 (function () {
     'use strict';
 
+    var PAGINAS_PROTEGIDAS = ['admin', 'comanda'];
     var usuario = null;
 
     function mensajeError(err) {
@@ -99,7 +101,7 @@
 
         var pagina = document.body.getAttribute('data-pagina');
 
-        if (pagina === 'admin') {
+        if (PAGINAS_PROTEGIDAS.indexOf(pagina) !== -1) {
             if (!user) {
                 window.location.replace('login.html');
                 return;
