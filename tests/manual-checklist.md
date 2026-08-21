@@ -59,10 +59,11 @@ administrador creada desde Firebase Console.
       "Pendiente".
 
 ## Seguridad (Realtime Database)
-- [ ] Sin sesión, escribir en `menu.json` con `curl`/Postman → `permission_denied`.
-- [ ] Sin sesión, leer `pedidos.json` → `permission_denied`.
-- [ ] La lectura de `menu.json` sigue siendo pública.
-- [ ] Enviar un pedido con `total` alterado (distinto de `price * cantidad`)
-      → rechazado por las reglas.
-- [ ] Enviar un pedido con `status` distinto de `PENDING`/`IN PROGRESS` →
-      rechazado por las reglas.
+Las reglas están abiertas a propósito (`.read`/`.write` en `true`): no hay
+nada que las bloquee a nivel de servidor. Lo único que queda por probar es
+que el JavaScript de la app siga validando antes de guardar:
+- [ ] `menu.html`/`admin.html` siguen rechazando nombre vacío o precio ≤ 0
+      **desde la app**, aunque las reglas ya no lo exijan.
+- [ ] `pedido.html` sigue rechazando cantidad inválida **desde la app**.
+- [ ] Sin sesión, leer o escribir `menu.json`/`pedidos.json` con `curl`/Postman
+      → ya no da `permission_denied`, se puede leer y escribir libremente.

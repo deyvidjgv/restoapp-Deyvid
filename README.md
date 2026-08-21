@@ -62,13 +62,10 @@ para escrituras existentes).
 
 ## Seguridad
 
-Las reglas de `database.rules.json` son la barrera real, no el JavaScript del
-cliente:
-
-- `/menu` se lee sin sesión (el menú es público) pero solo se escribe con
-  sesión iniciada.
-- `/pedidos` acepta pedidos nuevos de cualquiera, pero solo un usuario
-  autenticado puede leerlos o modificarlos.
-- Cada campo se valida por tipo y rango, y `$otro: false` bloquea campos no
-  previstos. El `total` se verifica contra `price * cantidad`, así que no se
-  puede guardar un pedido con un total alterado.
+**Las reglas de `database.rules.json` están completamente abiertas** (`.read`
+y `.write` en `true` para toda la base): cualquiera, tenga o no cuenta, puede
+leer y escribir en `/menu` y `/pedidos` sin ninguna validación de campos. Se
+dejaron así a propósito, por decisión explícita. El JavaScript del cliente
+(`js/menu.js`, `js/pedido.js`) sigue validando la forma de los datos antes de
+guardarlos, pero eso solo evita errores desde la propia app: no protege
+contra quien escriba directo a la base de datos por fuera de ella.
