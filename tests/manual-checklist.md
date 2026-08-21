@@ -41,9 +41,22 @@ administrador creada desde Firebase Console.
 - [ ] **Cantidad decimal** → "La cantidad debe ser un número entero."
 - [ ] **Cantidad > 99** → mensaje de máximo por pedido.
 - [ ] **Éxito**: pedido enviado → mensaje de confirmación, se limpia la
-      selección y el pedido aparece en `admin.html`.
+      selección y el pedido aparece en `admin.html` y en `comanda.html` con
+      estado "Pendiente".
 - [ ] Si el admin elimina un plato mientras estaba elegido, la selección se
       limpia con un aviso.
+
+## comanda.html
+- [ ] Sin sesión → redirige a `login.html`.
+- [ ] Con sesión: desaparece "Verificando sesión..." y aparece la lista.
+- [ ] Lista todos los pedidos, del más antiguo al más reciente.
+- [ ] Un pedido nuevo aparece como "Pendiente" con el botón "Marcar en
+      preparación".
+- [ ] Al hacer clic en el botón, el pedido pasa a "En preparación" y el botón
+      desaparece (no se puede revertir desde esta vista).
+- [ ] El cambio se refleja también en la tabla de pedidos de `admin.html`.
+- [ ] Un pedido guardado antes de este cambio (sin `status`) se muestra como
+      "Pendiente".
 
 ## Seguridad (Realtime Database)
 - [ ] Sin sesión, escribir en `menu.json` con `curl`/Postman → `permission_denied`.
@@ -51,3 +64,5 @@ administrador creada desde Firebase Console.
 - [ ] La lectura de `menu.json` sigue siendo pública.
 - [ ] Enviar un pedido con `total` alterado (distinto de `price * cantidad`)
       → rechazado por las reglas.
+- [ ] Enviar un pedido con `status` distinto de `PENDING`/`IN PROGRESS` →
+      rechazado por las reglas.

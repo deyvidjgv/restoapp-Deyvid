@@ -169,7 +169,7 @@
 
         cuerpo.innerHTML = '';
         if (!pedidos.length) {
-            cuerpo.appendChild(filaVacia('Todavía no hay pedidos.', 4));
+            cuerpo.appendChild(filaVacia('Todavía no hay pedidos.', 5));
             return;
         }
 
@@ -179,6 +179,7 @@
             tr.appendChild(celda(pedido.name || '—'));
             tr.appendChild(celda(String(pedido.cantidad || 0)));
             tr.appendChild(celda(Resto.moneda(pedido.total)));
+            tr.appendChild(celda(pedido.status === 'IN PROGRESS' ? 'En preparación' : 'Pendiente'));
             cuerpo.appendChild(tr);
         });
     }
@@ -198,7 +199,7 @@
             var cuerpo = document.getElementById('pedidosBody');
             if (cuerpo) {
                 cuerpo.innerHTML = '';
-                cuerpo.appendChild(filaVacia('No se pudieron cargar los pedidos.', 4));
+                cuerpo.appendChild(filaVacia('No se pudieron cargar los pedidos.', 5));
             }
         });
     }

@@ -24,6 +24,7 @@
         "price": { ".validate": "newData.isNumber() && newData.val() > 0" },
         "cantidad": { ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 99 && newData.val() % 1 === 0" },
         "total": { ".validate": "newData.isNumber() && newData.val() === newData.parent().child('price').val() * newData.parent().child('cantidad').val()" },
+        "status": { ".validate": "newData.isString() && (newData.val() === 'PENDING' || newData.val() === 'IN PROGRESS')" },
         "createdAt": { ".validate": "newData.isNumber()" },
         "$otro": { ".validate": false }
       }

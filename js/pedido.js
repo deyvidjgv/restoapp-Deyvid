@@ -102,6 +102,7 @@
             price: elegido.price,
             cantidad: cant,
             total: elegido.price * cant,
+            status: 'PENDING',
             createdAt: firebase.database.ServerValue.TIMESTAMP
         })
             .then(function () {
