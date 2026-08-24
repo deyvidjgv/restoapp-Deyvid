@@ -175,27 +175,38 @@
 
         pedidos.forEach(function (pedido) {
             var tr = document.createElement('tr');
-            tr.appendChild(celda(Resto.fecha(pedido.fecha)));
-            tr.appendChild(celda(pedido.platoNombre || '—'));
-            tr.appendChild(celda(String(pedido.cantidad || 0)));
+            tr.appendChild(celda(Resto.fecha(pedido.fecha_hora)));
+            tr.appendChild(celda(pedido.tipo_pedido === 'MESA'
+                ? 'Mesa ' + pedido.mesa_id
+                : RestoVentas.TIPOS[pedido.tipo_pedido]));
+
+            // Un pedido puede traer varios platos: se listan dentro de la
+            // misma celda para no multiplicar filas por comanda.
+            var tdItems = document.createElement('td');
+            pedido.items.forEach(function (item) {
+                var linea = document.createElement('div');
+                linea.textContent = item.cantidad + ' x ' + item.nombre;
+                tdItems.appendChild(linea);
+                if (item.notas) {
+                    var nota = document.createElement('div');
+                    nota.className = 'ayuda';
+                    nota.textContent = item.notas;
+                    tdItems.appendChild(nota);
+                }
+            });
+            tr.appendChild(tdItems);
+
             tr.appendChild(celda(Resto.moneda(pedido.total)));
-            tr.appendChild(celda(pedido.status === 'IN PROGRESS' ? 'En preparación' : 'Pendiente'));
+            tr.appendChild(celda(RestoVentas.ETIQUETAS[pedido.estado]));
             cuerpo.appendChild(tr);
         });
     }
 
     function escucharPedidos() {
-        firebase.database().ref('registroVentas').limitToLast(20).on('value', function (snap) {
-            var lista = [];
-            snap.forEach(function (hijo) {
-                var val = hijo.val() || {};
-                val.id = hijo.key;
-                lista.push(val);
-            });
+        RestoVentas.escuchar(20, function (lista) {
             lista.reverse(); // el más reciente primero
             pintarPedidos(lista);
-        }, function (err) {
-            console.error('Error leyendo pedidos:', err);
+        }, function () {
             var cuerpo = document.getElementById('pedidosBody');
             if (cuerpo) {
                 cuerpo.innerHTML = '';
@@ -218,6 +229,16 @@
 
         RestoMenu.escuchar(function (lista) {
             productos = lista;
+
+            // Si el producto que se está editando desapareció (lo borró otra
+            // sesión), se cierra la edición: guardarlo volvería a crearlo.
+            if (editando !== null && !lista.filter(function (p) { return p.id === editando; }).length) {
+                editando = null;
+                Resto.mensaje('prodMsg', 'El producto que editabas fue eliminado.', true);
+                pintarProductos();
+                return;
+            }
+
             // Redibujar mientras se edita una fila borraría lo escrito.
             if (editando === null) pintarProductos();
         }, function () {

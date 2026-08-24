@@ -5,13 +5,15 @@ tooling) conectada a Firebase Realtime Database y Firebase Authentication.
 
 ## Cómo funciona
 
-- **Los clientes** entran a `pedido.html`, eligen un plato del menú, indican la
-  cantidad y confirman. El pedido queda guardado con estado `PENDING`. No
+- **Los clientes** entran a `pedido.html`, arman su comanda (varios platos,
+  con cantidad y notas para cocina), indican si es en mesa, para llevar o a
+  domicilio, y confirman. El pedido queda guardado con estado `PENDING`. No
   necesitan cuenta.
 - **El administrador** entra con correo y contraseña a `admin.html`, donde crea,
   edita y elimina los platos del menú, y ve los pedidos que van llegando.
-- **Cocina** entra con la misma cuenta a `comanda.html`, donde ve todos los
-  pedidos con su estado y puede pasarlos de "Pendiente" a "En preparación".
+- **Cocina** entra con la misma cuenta a `comanda.html`, donde ve los pedidos
+  por atender y los hace avanzar paso a paso: Pendiente → En preparación →
+  Listo para servir → Entregado. Los entregados salen de la pantalla.
 
 El precio siempre lo define el administrador: en la página de pedido el campo
 de precio es de solo lectura y se completa solo al elegir un plato.
@@ -36,17 +38,21 @@ de precio es de solo lectura y se completa solo al elegir un plato.
 | `js/menu.js` | Lectura y escritura de `/menu` y `/registroPlatos` (con validación) |
 | `js/pedido.js` | Página de pedido |
 | `js/admin.js` | Panel de administración |
-| `js/comanda.js` | Comanda de cocina: lista pedidos y cambia su estado |
+| `js/ventas.js` | Pedidos: esquema, validación, estados y lectura de `/registroVentas` |
+| `js/comanda.js` | Comanda de cocina: lista pedidos y los hace avanzar de estado |
 
 ## Datos en Realtime Database
 
-Este esquema (nombres de colecciones y campos) es el que espera el flujo de
-n8n que consume esta base de datos, así que no se debe renombrar sin avisar:
-
 ```
-/menu/{id}          -> { id, name, price }
+/menu/{id}           -> { id, name, price }
 /registroPlatos/{id} -> { id, fecha, name, price }
-/registroVentas/{id} -> { id, cantidad, fecha, platoId, platoNombre, total, status }
+/registroVentas/{id} -> {
+                          id, tipo_pedido, mesa_id, mesero,
+                          items: [ { product_id, nombre, cantidad,
+                                     precio_unitario, subtotal_linea, notas } ],
+                          subtotal, impuestos, total,
+                          estado, fecha_hora, fecha_actualizacion, canal
+                        }
 ```
 
 - `/menu` es el estado actual del menú: lo que se ve en `pedido.html` y se
@@ -55,14 +61,60 @@ n8n que consume esta base de datos, así que no se debe renombrar sin avisar:
   crea un producto en `admin.html` queda, además, una copia acá con la fecha.
   Nunca se edita ni se borra, ni siquiera si el producto se edita o elimina
   de `/menu` después.
-- `/registroVentas` es cada pedido hecho desde `pedido.html`. `platoId`
-  apunta a la clave del producto en `/menu`; `platoNombre` es una copia del
-  nombre al momento del pedido (no cambia si el producto se renombra
-  después). `status` es `"PENDING"` al crear el pedido y pasa a
-  `"IN PROGRESS"` desde `comanda.html`. Un registro guardado antes de este
-  campo se trata como `"PENDING"` en la interfaz.
-- `fecha` se guarda como texto ISO 8601 (`new Date().toISOString()`), no
-  como timestamp numérico, para que n8n lo pueda parsear directo.
+- `/registroVentas` es cada pedido hecho desde `pedido.html`. **Un registro es
+  una comanda completa**, no un plato suelto: los platos van en `items[]`.
+
+### Campos de `/registroVentas`
+
+| Campo | Tipo | Qué es |
+|---|---|---|
+| `id` | string | La misma clave del nodo, guardada dentro del registro |
+| `tipo_pedido` | `"MESA"` \| `"LLEVAR"` \| `"DOMICILIO"` | Clasifica el flujo |
+| `mesa_id` | string | Número de mesa; `""` si no es pedido en mesa |
+| `mesero` | string | Quién tomó el pedido; `""` si no se indicó |
+| `items[].product_id` | string | Clave del producto en `/menu` |
+| `items[].nombre` | string | Copia del nombre al momento del pedido |
+| `items[].cantidad` | number | Unidades, entero entre 1 y 99 |
+| `items[].precio_unitario` | number | Precio vigente al confirmar el pedido |
+| `items[].subtotal_linea` | number | `cantidad * precio_unitario`, precalculado |
+| `items[].notas` | string | Indicaciones de cocina; `""` si no hay |
+| `subtotal` | number | Suma de los `subtotal_linea` |
+| `impuestos` | number | Hoy siempre `0`, pero el campo existe siempre |
+| `total` | number | `subtotal + impuestos` |
+| `estado` | string | Flujo de la comanda (ver abajo) |
+| `fecha_hora` | string | ISO 8601 en UTC, cuándo se creó el pedido |
+| `fecha_actualizacion` | string | ISO 8601 en UTC, último cambio de estado |
+| `canal` | string | Origen del pedido; `"WEB"` desde esta app |
+
+El `estado` avanza siempre hacia adelante y de a un paso:
+
+```
+PENDING -> IN_PREPARATION -> READY -> DELIVERED
+```
+
+### Reglas que asume el flujo de n8n
+
+Estos nombres de colecciones y campos son los que espera n8n, así que no se
+deben renombrar sin avisar. Además:
+
+- **Ningún campo se omite.** Los opcionales se guardan como `""` o `0`, nunca
+  como `null`: Realtime Database borra las claves con valor `null` al
+  escribir, y un campo que a veces está y a veces no rompe los flujos.
+- **Las fechas son ISO 8601 en UTC** (`new Date().toISOString()`), texto y no
+  timestamp numérico, para que n8n las parsee directo.
+- **`subtotal_linea` viene precalculado** para no tener que sumar dentro del
+  array desde n8n.
+- **Los estados van en mayúscula y con guion bajo**, sin espacios, para poder
+  usarlos en expresiones y filtros sin escaparlos.
+
+### Compatibilidad con los pedidos viejos
+
+Los registros guardados con el esquema anterior (un solo plato por registro,
+con `platoId` / `platoNombre` / `cantidad` en la raíz y `status` en
+`"PENDING"` / `"IN PROGRESS"`) se normalizan al leerlos en `js/ventas.js`: se
+convierten a un pedido de un solo item y `"IN PROGRESS"` se mapea a
+`IN_PREPARATION`. **No hace falta migrar nada en la base**, pero los flujos de
+n8n que lean el histórico completo sí tienen que contemplar las dos formas.
 
 ## Puesta en marcha
 

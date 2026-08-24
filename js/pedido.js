@@ -1,39 +1,35 @@
 // RestoApp - Página de pedido (pública)
 //
-// El cliente elige un plato del menú, define la cantidad y confirma. El
-// precio unitario nunca se escribe a mano: viene del producto que creó el
-// administrador, y el campo es de solo lectura.
+// El cliente arma una comanda: elige platos del menú, define cantidad y notas
+// de cocina, y confirma. El precio unitario nunca se escribe a mano: viene
+// del producto que creó el administrador, y el campo es de solo lectura.
 (function () {
     'use strict';
 
-    var CANTIDAD_MAX = 99;
-
     var productos = [];
-    var elegido = null;
+    var elegido = null;   // plato resaltado en el menú, todavía sin agregar
+    var carrito = [];     // { product_id, nombre, cantidad, precio_unitario, notas }
+
+    function $(id) { return document.getElementById(id); }
 
     // --- Cálculo ---
 
+    function subtotalLinea(item) {
+        return item.cantidad * item.precio_unitario;
+    }
+
     function total() {
-        return elegido ? elegido.price * cantidad() : 0;
+        return carrito.reduce(function (suma, item) { return suma + subtotalLinea(item); }, 0);
     }
 
     function cantidad() {
-        return Number(document.getElementById('cantidad').value);
+        return Number($('cantidad').value);
     }
 
-    function validar() {
-        if (!elegido) return 'Elige un plato del menú.';
-        var cant = cantidad();
-        if (!cant || cant <= 0) return 'La cantidad debe ser mayor a 0.';
-        if (Math.floor(cant) !== cant) return 'La cantidad debe ser un número entero.';
-        if (cant > CANTIDAD_MAX) return 'La cantidad máxima por pedido es ' + CANTIDAD_MAX + '.';
-        return null;
-    }
-
-    // --- Pintado ---
+    // --- Menú ---
 
     function pintarMenu() {
-        var caja = document.getElementById('platos');
+        var caja = $('platos');
         if (!caja) return;
 
         caja.innerHTML = '';
@@ -64,54 +60,172 @@
                 elegido = producto;
                 Resto.mensaje('pedidoMsg', '');
                 pintarMenu();
-                pintarResumen();
+                pintarSeleccion();
             });
 
             caja.appendChild(boton);
         });
     }
 
-    function pintarResumen() {
-        document.getElementById('seleccionado').value = elegido ? elegido.name : '';
-        document.getElementById('precio').value = elegido ? Resto.moneda(elegido.price) : '—';
-        document.getElementById('total').textContent = Resto.moneda(total());
-        document.getElementById('pedirBtn').disabled = !elegido;
+    function pintarSeleccion() {
+        $('seleccionado').value = elegido ? elegido.name : '';
+        $('precio').value = elegido ? Resto.moneda(elegido.price) : '—';
+        $('agregarBtn').disabled = !elegido;
     }
 
-    // --- Guardar el pedido ---
+    // --- Carrito ---
 
-    function hacerPedido() {
-        var error = validar();
+    function agregar() {
+        if (!elegido) return;
+
+        var cant = cantidad();
+        var item = {
+            product_id: elegido.id,
+            nombre: elegido.name,
+            cantidad: cant,
+            precio_unitario: elegido.price,
+            notas: $('notas').value.trim()
+        };
+
+        // Se valida cada línea con las mismas reglas que se aplican al
+        // guardar, para avisar antes de que el cliente confirme.
+        var error = RestoVentas.validar({ tipo_pedido: 'LLEVAR', items: [item] });
         if (error) {
             Resto.mensaje('pedidoMsg', error, true);
             return;
         }
 
-        var boton = document.getElementById('pedirBtn');
+        // Mismo plato con las mismas notas: se suman las cantidades en vez de
+        // repetir la línea, así cocina ve "3 x Hamburguesa" y no tres líneas.
+        var existente = carrito.filter(function (l) {
+            return l.product_id === item.product_id && l.notas === item.notas;
+        })[0];
+
+        if (existente) {
+            if (existente.cantidad + cant > RestoVentas.CANTIDAD_MAX) {
+                Resto.mensaje('pedidoMsg', 'La cantidad máxima por plato es ' + RestoVentas.CANTIDAD_MAX + '.', true);
+                return;
+            }
+            existente.cantidad += cant;
+            // El precio puede haber cambiado desde que se agregó la primera
+            // vez: manda siempre el vigente.
+            existente.precio_unitario = item.precio_unitario;
+        } else {
+            carrito.push(item);
+        }
+
+        elegido = null;
+        $('cantidad').value = '1';
+        $('notas').value = '';
+        Resto.mensaje('pedidoMsg', '');
+        pintarMenu();
+        pintarSeleccion();
+        pintarCarrito();
+    }
+
+    function quitar(indice) {
+        carrito.splice(indice, 1);
+        Resto.mensaje('pedidoMsg', '');
+        pintarCarrito();
+    }
+
+    function celda(texto) {
+        var td = document.createElement('td');
+        td.textContent = texto;
+        return td;
+    }
+
+    function pintarCarrito() {
+        var cuerpo = $('carritoBody');
+        if (!cuerpo) return;
+
+        cuerpo.innerHTML = '';
+
+        if (!carrito.length) {
+            var tr = document.createElement('tr');
+            var td = document.createElement('td');
+            td.className = 'vacio';
+            td.colSpan = 4;
+            td.textContent = 'Todavía no has agregado platos.';
+            tr.appendChild(td);
+            cuerpo.appendChild(tr);
+        } else {
+            carrito.forEach(function (item, indice) {
+                var fila = document.createElement('tr');
+
+                var tdNombre = celda(item.nombre);
+                if (item.notas) {
+                    var nota = document.createElement('div');
+                    nota.className = 'ayuda';
+                    nota.textContent = item.notas;
+                    tdNombre.appendChild(nota);
+                }
+                fila.appendChild(tdNombre);
+
+                fila.appendChild(celda(String(item.cantidad)));
+                fila.appendChild(celda(Resto.moneda(subtotalLinea(item))));
+
+                var acciones = document.createElement('td');
+                acciones.className = 'acciones';
+                var quitarBtn = document.createElement('button');
+                quitarBtn.type = 'button';
+                quitarBtn.className = 'peligro';
+                quitarBtn.textContent = 'Quitar';
+                quitarBtn.addEventListener('click', function () { quitar(indice); });
+                acciones.appendChild(quitarBtn);
+                fila.appendChild(acciones);
+
+                cuerpo.appendChild(fila);
+            });
+        }
+
+        $('total').textContent = Resto.moneda(total());
+        $('pedirBtn').disabled = !carrito.length;
+    }
+
+    // --- Datos del pedido ---
+
+    function tipoPedido() {
+        return $('tipoPedido').value;
+    }
+
+    // El número de mesa solo tiene sentido si el pedido es para consumir ahí.
+    function pintarTipo() {
+        $('campoMesa').classList.toggle('oculto', tipoPedido() !== 'MESA');
+    }
+
+    // --- Confirmar ---
+
+    function confirmar() {
+        var datos = {
+            tipo_pedido: tipoPedido(),
+            mesa_id: $('mesa').value.trim(),
+            mesero: $('mesero').value.trim(),
+            items: carrito,
+            canal: 'WEB'
+        };
+
+        var error = RestoVentas.validar(datos);
+        if (error) {
+            Resto.mensaje('pedidoMsg', error, true);
+            return;
+        }
+
+        var boton = $('pedirBtn');
         boton.disabled = true;
         Resto.mensaje('pedidoMsg', 'Enviando pedido...');
 
-        var cant = cantidad();
-        // push() reserva la clave antes de escribir; se guarda esa misma
-        // clave como `id` dentro del propio registro. Se guarda en
-        // /registroVentas (no /pedidos) para compartir esquema con el flujo
-        // de n8n: cantidad, fecha, platoId, platoNombre, total, status.
-        var refVenta = firebase.database().ref('registroVentas').push();
-        refVenta.set({
-            id: refVenta.key,
-            cantidad: cant,
-            fecha: new Date().toISOString(),
-            platoId: elegido.id,
-            platoNombre: elegido.name,
-            total: elegido.price * cant,
-            status: 'PENDING'
-        })
+        RestoVentas.crear(datos)
             .then(function () {
-                Resto.mensaje('pedidoMsg', 'Pedido enviado: ' + cant + ' x ' + elegido.name + '.');
+                var platos = carrito.reduce(function (suma, item) { return suma + item.cantidad; }, 0);
+                Resto.mensaje('pedidoMsg', 'Pedido enviado: ' + platos + ' plato(s). ¡Gracias!');
+                carrito = [];
                 elegido = null;
-                document.getElementById('cantidad').value = '1';
+                $('cantidad').value = '1';
+                $('notas').value = '';
                 pintarMenu();
-                pintarResumen();
+                pintarSeleccion();
+                pintarCarrito();
             })
             .catch(function (err) {
                 console.error('Error al enviar el pedido:', err);
@@ -120,27 +234,64 @@
             });
     }
 
-    document.addEventListener('DOMContentLoaded', function () {
-        document.getElementById('pedirBtn').addEventListener('click', hacerPedido);
-        document.getElementById('cantidad').addEventListener('input', function () {
-            Resto.mensaje('pedidoMsg', '');
-            pintarResumen();
+    // --- Menú en tiempo real ---
+    //
+    // Cuando el admin cambia el menú hay que reconciliar lo que el cliente ya
+    // tiene en pantalla: si un plato desapareció se quita, y si le cambiaron
+    // el precio se toma el nuevo, para no cobrar con un precio viejo.
+    function reconciliar(lista) {
+        var porId = {};
+        lista.forEach(function (producto) { porId[producto.id] = producto; });
+
+        if (elegido) {
+            elegido = porId[elegido.id] || null;
+        }
+
+        var quitados = 0;
+        var recalculados = 0;
+
+        carrito = carrito.filter(function (item) {
+            var producto = porId[item.product_id];
+            if (!producto) {
+                quitados++;
+                return false;
+            }
+            if (producto.price !== item.precio_unitario) {
+                item.precio_unitario = producto.price;
+                recalculados++;
+            }
+            item.nombre = producto.name;
+            return true;
         });
+
+        if (quitados) {
+            Resto.mensaje('pedidoMsg', 'Se quitó del pedido ' + quitados + ' plato(s) que ya no está(n) en el menú.', true);
+        } else if (recalculados) {
+            Resto.mensaje('pedidoMsg', 'El precio de ' + recalculados + ' plato(s) cambió; el total se actualizó.', true);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        $('agregarBtn').addEventListener('click', agregar);
+        $('pedirBtn').addEventListener('click', confirmar);
+        $('tipoPedido').addEventListener('change', function () {
+            Resto.mensaje('pedidoMsg', '');
+            pintarTipo();
+        });
+        $('cantidad').addEventListener('input', function () { Resto.mensaje('pedidoMsg', ''); });
 
         RestoMenu.escuchar(function (lista) {
             productos = lista;
-            // Si el plato elegido se eliminó del menú mientras el cliente
-            // decidía, se limpia la selección para no pedir algo inexistente.
-            if (elegido && !lista.filter(function (p) { return p.id === elegido.id; }).length) {
-                elegido = null;
-                Resto.mensaje('pedidoMsg', 'El plato que habías elegido ya no está disponible.', true);
-            }
+            reconciliar(lista);
             pintarMenu();
-            pintarResumen();
+            pintarSeleccion();
+            pintarCarrito();
         }, function () {
             Resto.mensaje('pedidoMsg', 'No se pudo cargar el menú.', true);
         });
 
-        pintarResumen();
+        pintarTipo();
+        pintarSeleccion();
+        pintarCarrito();
     });
 })();

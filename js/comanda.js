@@ -1,45 +1,57 @@
 // RestoApp - Comanda de cocina
 //
-// Lee /registroVentas (mismo esquema que usa el flujo de n8n: cantidad,
-// fecha, platoId, platoNombre, total, status). La única acción posible es
-// pasar un pedido de "PENDING" a "IN PROGRESS"; los que no tienen `status`
-// (guardados antes de este campo) se tratan como "PENDING".
+// Lee /registroVentas a través de RestoVentas (que normaliza también los
+// pedidos guardados con el esquema viejo) y hace avanzar cada comanda por el
+// flujo PENDING → IN_PREPARATION → READY → DELIVERED. Los ya entregados
+// desaparecen de la pantalla: la comanda solo muestra lo que está por hacer.
 (function () {
     'use strict';
 
-    var ETIQUETAS = {
-        PENDING: 'Pendiente',
-        'IN PROGRESS': 'En preparación'
-    };
-
-    function estadoDe(pedido) {
-        return pedido.status === 'IN PROGRESS' ? 'IN PROGRESS' : 'PENDING';
-    }
+    var LIMITE = 100;
+    var pedidos = [];
 
     function tarjeta(pedido) {
-        var estado = estadoDe(pedido);
-
         var div = document.createElement('div');
-        div.className = 'plato';
+        div.className = 'plato comanda-pedido';
 
-        var nombre = document.createElement('div');
-        nombre.className = 'nombre';
-        nombre.textContent = (pedido.cantidad || 0) + ' x ' + (pedido.platoNombre || '—');
-        div.appendChild(nombre);
+        var titulo = document.createElement('div');
+        titulo.className = 'nombre';
+        titulo.textContent = pedido.tipo_pedido === 'MESA'
+            ? 'Mesa ' + pedido.mesa_id
+            : RestoVentas.TIPOS[pedido.tipo_pedido];
+        div.appendChild(titulo);
 
-        var detalle = document.createElement('div');
-        detalle.className = 'precio';
-        detalle.textContent = Resto.fecha(pedido.fecha) + ' · ' + ETIQUETAS[estado];
-        div.appendChild(detalle);
+        var meta = document.createElement('div');
+        meta.className = 'precio';
+        meta.textContent = Resto.fecha(pedido.fecha_hora)
+            + ' · ' + RestoVentas.ETIQUETAS[pedido.estado]
+            + (pedido.mesero ? ' · ' + pedido.mesero : '');
+        div.appendChild(meta);
 
-        if (estado === 'PENDING') {
+        var lista = document.createElement('ul');
+        lista.className = 'comanda-items';
+        pedido.items.forEach(function (item) {
+            var li = document.createElement('li');
+            li.textContent = item.cantidad + ' x ' + item.nombre;
+            if (item.notas) {
+                var nota = document.createElement('div');
+                nota.className = 'ayuda';
+                nota.textContent = item.notas;
+                li.appendChild(nota);
+            }
+            lista.appendChild(li);
+        });
+        div.appendChild(lista);
+
+        var accion = RestoVentas.ACCIONES[pedido.estado];
+        if (accion) {
             var boton = document.createElement('button');
             boton.type = 'button';
             boton.className = 'principal';
-            boton.textContent = 'Marcar en preparación';
+            boton.textContent = accion;
             boton.addEventListener('click', function () {
                 boton.disabled = true;
-                cambiarEstado(pedido.id, boton);
+                avanzar(pedido, boton);
             });
             div.appendChild(boton);
         }
@@ -47,8 +59,9 @@
         return div;
     }
 
-    function cambiarEstado(id, boton) {
-        firebase.database().ref('registroVentas').child(id).update({ status: 'IN PROGRESS' })
+    function avanzar(pedido, boton) {
+        Resto.mensaje('comandaMsg', '');
+        RestoVentas.avanzar(pedido.id, pedido.estado)
             .catch(function (err) {
                 console.error('Error actualizando el pedido:', err);
                 Resto.mensaje('comandaMsg', RestoAuth.mensajeError(err), true);
@@ -56,12 +69,18 @@
             });
     }
 
-    function pintar(pedidos) {
+    function pintar() {
         var caja = document.getElementById('comanda');
         if (!caja) return;
 
+        // Solo lo que cocina todavía tiene que atender, del más antiguo al
+        // más reciente: los entregados salen de la pantalla.
+        var pendientes = pedidos.filter(function (pedido) {
+            return RestoVentas.activo(pedido.estado);
+        });
+
         caja.innerHTML = '';
-        if (!pedidos.length) {
+        if (!pendientes.length) {
             var vacio = document.createElement('p');
             vacio.className = 'vacio';
             vacio.textContent = 'No hay pedidos por atender.';
@@ -69,21 +88,16 @@
             return;
         }
 
-        pedidos.forEach(function (pedido) { caja.appendChild(tarjeta(pedido)); });
+        pendientes.forEach(function (pedido) { caja.appendChild(tarjeta(pedido)); });
     }
 
-    function escuchar() {
-        firebase.database().ref('registroVentas').limitToLast(50).on('value', function (snap) {
-            var lista = [];
-            snap.forEach(function (hijo) {
-                var val = hijo.val() || {};
-                val.id = hijo.key;
-                lista.push(val);
-            });
-            // El primero en llegar es el primero en atenderse.
-            pintar(lista);
-        }, function (err) {
-            console.error('Error leyendo la comanda:', err);
+    document.addEventListener('sesion-lista', function (evento) {
+        if (!evento.detail) return;
+
+        RestoVentas.escuchar(LIMITE, function (lista) {
+            pedidos = lista;
+            pintar();
+        }, function () {
             var caja = document.getElementById('comanda');
             if (caja) {
                 caja.innerHTML = '';
@@ -93,10 +107,5 @@
                 caja.appendChild(mensaje);
             }
         });
-    }
-
-    document.addEventListener('sesion-lista', function (evento) {
-        if (!evento.detail) return;
-        escuchar();
     });
 })();

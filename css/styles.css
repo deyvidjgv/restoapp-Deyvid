@@ -341,3 +341,36 @@ button.peligro:hover:not(:disabled) { background: var(--marca-suave); }
     .barra nav { margin: 0; }
     .contenido { padding: 28px 20px; }
 }
+
+/* Selector de tipo de pedido: mismo aspecto que los inputs. */
+select {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    background: rgba(10, 14, 32, 0.45);
+    color: var(--texto);
+}
+
+select:focus {
+    outline: none;
+    border-color: var(--marca);
+}
+
+/* Tarjetas de la comanda de cocina */
+.comanda-pedido {
+    display: block;
+    cursor: default;
+    text-align: left;
+}
+
+.comanda-items {
+    margin: 10px 0 12px;
+    padding-left: 18px;
+    color: var(--texto);
+    font-size: 15px;
+}
+
+.comanda-items li { margin-bottom: 4px; }

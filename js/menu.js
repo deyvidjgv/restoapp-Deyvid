@@ -22,6 +22,7 @@
         if (!nombre) return 'Escribe el nombre del producto.';
         if (nombre.length > NOMBRE_MAX) return 'El nombre no puede superar ' + NOMBRE_MAX + ' caracteres.';
         if (!isFinite(precio) || precio <= 0) return 'El precio debe ser un número mayor a 0.';
+        if (Math.floor(precio) !== precio) return 'El precio debe ser un número entero, sin centavos.';
         if (precio > PRECIO_MAX) return 'El precio es demasiado alto.';
         return null;
     }
@@ -70,13 +71,24 @@
         return firebase.database().ref().update(updates);
     }
 
+    // update() sobre una ruta borrada la vuelve a crear, así que se edita por
+    // transacción: si el producto ya no existe (lo eliminó otra sesión), se
+    // aborta en vez de resucitarlo.
     function actualizar(id, nombre, precio) {
         var error = validar(nombre, precio);
         if (error) return Promise.reject(new Error(error));
+
         // Se incluye `id` también al editar para completarlo en productos
         // creados antes de este cambio, que todavía no lo tenían guardado.
         // Solo se toca /menu: /registroPlatos es un histórico y no se edita.
-        return ref(id).update({ id: id, name: nombre, price: precio });
+        return ref(id).transaction(function (actual) {
+            if (actual === null) return actual;
+            return { id: id, name: nombre, price: precio };
+        }).then(function (resultado) {
+            if (!resultado.committed || !resultado.snapshot.exists()) {
+                throw new Error('El producto ya no existe en el menú.');
+            }
+        });
     }
 
     function eliminar(id) {
