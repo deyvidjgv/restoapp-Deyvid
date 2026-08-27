@@ -1,0 +1,10 @@
+id_producto,nombre,descripcion,precio,categoria,stock
+PROD-001,Café americano,Café negro recién hecho,4000,Bebidas,50
+PROD-002,Té verde,Té caliente en bolsa,3500,Bebidas,40
+PROD-003,Jugo de mora,Jugo natural en vaso,5000,Bebidas,25
+PROD-004,Empanada de pollo,Empanada frita rellena de pollo,3000,Comidas,30
+PROD-005,Sándwich mixto,Jamón y queso en pan tostado,7500,Comidas,20
+PROD-006,Almuerzo del día,"Arroz, proteína y ensalada",15000,Comidas,15
+PROD-007,Papas fritas,Porción individual,4500,Snacks,35
+PROD-008,Galletas surtidas,Paquete individual,2500,Snacks,50
+PROD-009,Barra de granola,Barra individual,2800,Snacks,40

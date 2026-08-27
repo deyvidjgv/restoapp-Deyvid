@@ -11,9 +11,9 @@
 ## Checklist
 
 - [ ] Probé el flujo de **login** (mesero y/o admin según aplique).
-- [ ] Si toqué `admin.html`/`productos.js`/`meseros.js`: probé crear/editar/eliminar productos o meseros.
-- [ ] Si toqué `pedido.html`/`pedidos.js`: probé armar y procesar un pedido, y verifiqué que el stock se descontó.
-- [ ] Si toqué `database.rules.json`: publiqué las reglas en un proyecto Firebase de prueba y verifiqué que no rompen lecturas/escrituras existentes.
+- [ ] Si toqué `admin.html`/`menu.js`: probé crear/editar/eliminar productos.
+- [ ] Si toqué `n8n/deliverybot-workflow.json`: reimporté el workflow en n8n y probé el flujo de pedido de punta a punta con el bot de Telegram.
+- [ ] Si toqué `ventas.js`/`comanda.js`: probé el cambio de estado y verifiqué que llega la notificación de Telegram al cliente.
 - [ ] `node --check` pasa en los archivos `.js` modificados (o dejé que el workflow de CI lo confirme).
 - [ ] No dejé `console.log` de depuración ni credenciales nuevas en el código.
 

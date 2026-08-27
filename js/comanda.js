@@ -1,9 +1,9 @@
-// RestoApp - Comanda de cocina
+// DeliveryBot - Comanda de cocina
 //
-// Lee /registroVentas a través de RestoVentas (que normaliza también los
-// pedidos guardados con el esquema viejo) y hace avanzar cada comanda por el
-// flujo PENDING → IN_PREPARATION → READY → DELIVERED. Los ya entregados
-// desaparecen de la pantalla: la comanda solo muestra lo que está por hacer.
+// Lee la hoja PEDIDOS (vía n8n) a través de RestoVentas y hace avanzar cada
+// pedido por el flujo PENDING → IN_PREPARATION → ON_THE_WAY → DELIVERED. Los
+// ya entregados desaparecen de la pantalla: la comanda solo muestra lo que
+// está por hacer.
 (function () {
     'use strict';
 

@@ -40,7 +40,9 @@
     function filaLectura(producto) {
         var tr = document.createElement('tr');
         tr.appendChild(celda(producto.name));
+        tr.appendChild(celda(producto.category));
         tr.appendChild(celda(Resto.moneda(producto.price)));
+        tr.appendChild(celda(String(producto.stock)));
 
         var acciones = document.createElement('td');
         acciones.className = 'acciones';
@@ -66,6 +68,18 @@
         tdNombre.appendChild(inputNombre);
         tr.appendChild(tdNombre);
 
+        var selectCategoria = document.createElement('select');
+        RestoMenu.CATEGORIAS.forEach(function (cat) {
+            var opt = document.createElement('option');
+            opt.value = cat;
+            opt.textContent = cat;
+            if (cat === producto.category) opt.selected = true;
+            selectCategoria.appendChild(opt);
+        });
+        var tdCategoria = document.createElement('td');
+        tdCategoria.appendChild(selectCategoria);
+        tr.appendChild(tdCategoria);
+
         var inputPrecio = document.createElement('input');
         inputPrecio.type = 'number';
         inputPrecio.value = producto.price;
@@ -74,10 +88,19 @@
         tdPrecio.appendChild(inputPrecio);
         tr.appendChild(tdPrecio);
 
+        var inputStock = document.createElement('input');
+        inputStock.type = 'number';
+        inputStock.value = producto.stock;
+        inputStock.min = '0';
+        var tdStock = document.createElement('td');
+        tdStock.appendChild(inputStock);
+        tr.appendChild(tdStock);
+
         var acciones = document.createElement('td');
         acciones.className = 'acciones';
         acciones.appendChild(boton('Guardar', '', function () {
-            guardar(producto.id, inputNombre.value.trim(), Number(inputPrecio.value));
+            guardar(producto.id, inputNombre.value.trim(), Number(inputPrecio.value),
+                selectCategoria.value, Number(inputStock.value));
         }));
         acciones.appendChild(boton('Cancelar', '', function () {
             editando = null;
@@ -94,7 +117,7 @@
 
         cuerpo.innerHTML = '';
         if (!productos.length) {
-            cuerpo.appendChild(filaVacia('Todavía no hay productos.', 3));
+            cuerpo.appendChild(filaVacia('Todavía no hay productos.', 5));
             return;
         }
         productos.forEach(function (producto) {
@@ -107,6 +130,8 @@
     function crear() {
         var nombre = document.getElementById('nuevoNombre').value.trim();
         var precio = Number(document.getElementById('nuevoPrecio').value);
+        var categoria = document.getElementById('nuevoCategoria').value;
+        var stock = Number(document.getElementById('nuevoStock').value);
 
         var error = RestoMenu.validar(nombre, precio);
         if (error) {
@@ -118,11 +143,12 @@
         btn.disabled = true;
         Resto.mensaje('prodMsg', 'Guardando...');
 
-        RestoMenu.crear(nombre, precio)
+        RestoMenu.crear(nombre, precio, categoria, stock)
             .then(function () {
                 Resto.mensaje('prodMsg', 'Producto "' + nombre + '" creado.');
                 document.getElementById('nuevoNombre').value = '';
                 document.getElementById('nuevoPrecio').value = '';
+                document.getElementById('nuevoStock').value = '';
             })
             .catch(function (err) {
                 console.error('Error creando producto:', err);
@@ -131,14 +157,14 @@
             .then(function () { btn.disabled = false; });
     }
 
-    function guardar(id, nombre, precio) {
+    function guardar(id, nombre, precio, categoria, stock) {
         var error = RestoMenu.validar(nombre, precio);
         if (error) {
             Resto.mensaje('prodMsg', error, true);
             return;
         }
 
-        RestoMenu.actualizar(id, nombre, precio)
+        RestoMenu.actualizar(id, nombre, precio, categoria, stock)
             .then(function () {
                 editando = null;
                 Resto.mensaje('prodMsg', 'Producto actualizado.');

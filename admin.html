@@ -12,7 +12,6 @@
 <header class="barra">
     <a href="index.html" class="marca">Resto<span>App</span></a>
     <nav>
-        <a href="pedido.html" data-nav="pedido">Menú</a>
         <a href="comanda.html" data-nav="comanda">Comanda</a>
         <a href="admin.html" data-nav="admin">Panel administrativo</a>
     </nav>
@@ -37,12 +36,14 @@
                         <thead>
                             <tr>
                                 <th>Nombre</th>
+                                <th>Categoría</th>
                                 <th>Precio</th>
+                                <th>Stock</th>
                                 <th></th>
                             </tr>
                         </thead>
                         <tbody id="productosBody">
-                            <tr><td colspan="3" class="vacio">Cargando productos...</td></tr>
+                            <tr><td colspan="5" class="vacio">Cargando productos...</td></tr>
                         </tbody>
                     </table>
                 </section>
@@ -70,11 +71,21 @@
                 <h2>Nuevo producto</h2>
 
                 <label for="nuevoNombre">Nombre</label>
-                <input type="text" id="nuevoNombre" maxlength="60" placeholder="Ej: Hamburguesa">
+                <input type="text" id="nuevoNombre" maxlength="60" placeholder="Ej: Café americano">
+
+                <label for="nuevoCategoria">Categoría</label>
+                <select id="nuevoCategoria">
+                    <option value="Bebidas">Bebidas</option>
+                    <option value="Comidas">Comidas</option>
+                    <option value="Snacks">Snacks</option>
+                </select>
 
                 <label for="nuevoPrecio">Precio unitario</label>
                 <input type="number" id="nuevoPrecio" min="1" step="1" placeholder="Ej: 15000">
                 <p class="ayuda">Valor en pesos colombianos, sin puntos ni símbolos.</p>
+
+                <label for="nuevoStock">Stock disponible</label>
+                <input type="number" id="nuevoStock" min="0" step="1" placeholder="Ej: 20">
 
                 <button id="crearBtn" class="principal">Crear producto</button>
                 <div id="prodMsg" class="mensaje" role="status" aria-live="polite"></div>
@@ -86,8 +97,8 @@
 <script src="js/starfield.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 <script src="js/firebase-config.js"></script>
+<script src="js/n8n-config.js"></script>
 <script src="js/comun.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/menu.js"></script>

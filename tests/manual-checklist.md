@@ -1,14 +1,70 @@
-# RestoApp - Checklist de pruebas manuales
+# DeliveryBot - Checklist de pruebas manuales
 
-Proyecto estático: las pruebas son manuales, abriendo cada página con un
-servidor local (Live Server, `python3 -m http.server`), nunca con `file://`.
+Proyecto con dos partes que se prueban distinto:
 
-Requisitos previos: reglas de `database.rules.json` publicadas y una cuenta de
-administrador creada desde Firebase Console.
+- **Bot de Telegram + n8n + Google Sheets**: pruebas conversando con el bot y
+  revisando las hojas en vivo.
+- **Webapp de cocina/administración** (`admin.html`, `comanda.html`): igual
+  que antes, abriendo cada página con un servidor local (Live Server,
+  `python3 -m http.server`), nunca con `file://`.
+
+Requisitos previos: workflow `n8n/deliverybot-workflow.json` importado y
+activo, `N8N_BASE_URL`/`TELEGRAM_BOT_URL` configurados en
+`js/n8n-config.js`, hoja `DeliveryBot_DB` con las 5 hojas creadas, y una
+cuenta de administrador creada desde Firebase Console (solo para el login de
+la webapp).
+
+## Bot de Telegram — flujo de pedido
+
+- [ ] `/start` muestra las categorías (Bebidas, Comidas, Snacks) como botones.
+- [ ] Un producto con `stock = 0` no aparece listado en su categoría.
+- [ ] Elegir un producto pregunta la cantidad; escribir `0`, texto no numérico
+      o un número > 99 responde con el mensaje de cantidad no válida y no
+      avanza el wizard.
+- [ ] Tras una cantidad válida, aparecen los botones "Agregar otro" /
+      "Confirmar pedido".
+- [ ] "Agregar otro" vuelve a mostrar categorías y conserva lo ya elegido en
+      `SESSIONS.carrito_temporal`.
+- [ ] "Confirmar pedido": el bot responde con el `id_pedido`, el total y
+      "Estado: Recibido", y queda una fila nueva en `PEDIDOS` con ese
+      `id_pedido`, `estado = PENDING`, `detalles_pedido` con todas las líneas.
+- [ ] El stock de cada producto pedido se descuenta en `MENU` en la cantidad
+      exacta.
+- [ ] El chat de cocina (`TELEGRAM_CHAT_ID_COCINA`) recibe el aviso de nuevo
+      pedido.
+- [ ] `USUARIOS` tiene una fila con el `telegram_id` y `nombre_completo` del
+      cliente (se crea si no existía, se actualiza si ya existía).
+- [ ] **Sin stock suficiente**: confirmar un pedido que pide más unidades de
+      las disponibles responde con el aviso de falta de stock y **no** crea
+      fila en `PEDIDOS` ni descuenta stock.
+- [ ] `/menu` en cualquier punto del flujo reinicia a la pantalla de
+      categorías.
+
+## Cambio de estado y notificaciones
+
+- [ ] Al avanzar un pedido desde `comanda.html` (Recibido → En preparación →
+      En camino → Entregado), el cliente recibe un mensaje de Telegram por
+      cada cambio, con el estado correcto.
+- [ ] El webhook `/pedidos/:id/avanzar` responde `409` (conflicto) si se envía
+      un `estado_esperado` que ya no coincide con el estado real en `PEDIDOS`
+      (dos personas cambiando el mismo pedido a la vez).
+- [ ] Un pedido `DELIVERED` no ofrece más acciones de avance.
+
+## Reporte diario
+
+- [ ] Disparar manualmente el nodo "Cron - Reporte diario" (o esperar a la
+      hora configurada) agrega una fila nueva en `REPORTES` con `fecha`,
+      `total_pedidos`, `total_vendido`, `producto_estrella` y `hora_pico`
+      calculados solo con los pedidos de ese día.
+- [ ] El administrador (`TELEGRAM_CHAT_ID_ADMIN`) recibe el resumen por
+      Telegram.
+- [ ] Un día sin pedidos genera un reporte con `total_pedidos = 0` y
+      `producto_estrella = "Sin datos"`, sin que el workflow falle.
 
 ## index.html
 - [ ] Carga sin errores en consola.
-- [ ] "Hacer un pedido" lleva a `pedido.html`; "Administrar menú" a `login.html`.
+- [ ] "Hacer un pedido por Telegram" abre el bot (`TELEGRAM_BOT_URL`);
+      "Administrar menú" lleva a `login.html`.
 - [ ] Con sesión iniciada aparece "Sesión: correo" y el botón "Cerrar sesión".
 
 ## login.html
@@ -21,102 +77,44 @@ administrador creada desde Firebase Console.
 ## admin.html
 - [ ] Sin sesión → redirige a `login.html`.
 - [ ] Con sesión: desaparece "Verificando sesión..." y aparece el panel.
-- [ ] **Crear**: nombre + precio válidos → mensaje de éxito, el formulario se
-      limpia, la fila aparece en la tabla sin recargar, y queda un registro
-      nuevo en `/registroPlatos` con la fecha.
+- [ ] **Crear**: nombre, categoría, precio y stock válidos → mensaje de éxito,
+      el formulario se limpia, y la fila aparece en la tabla (puede tardar
+      hasta `POLL_MS` en reflejarse, no es instantáneo como antes con
+      Firebase).
 - [ ] **Error nombre vacío** → "Escribe el nombre del producto."
 - [ ] **Error precio** 0, vacío o negativo → "El precio debe ser un número mayor a 0."
-- [ ] **Editar**: el botón convierte la fila en campos; Guardar persiste los
-      cambios, Cancelar los descarta.
-- [ ] **Eliminar**: pide confirmación y la fila desaparece de `/menu` (el
-      registro en `/registroPlatos` no se toca).
-- [ ] **Editar un producto que otra sesión eliminó**: la fila de edición se
-      cierra sola con el aviso "El producto que editabas fue eliminado." y el
-      producto **no** reaparece en `/menu`.
+- [ ] **Editar**: el botón convierte la fila en campos (nombre, categoría,
+      precio, stock); Guardar persiste los cambios en `MENU`, Cancelar los
+      descarta.
+- [ ] **Eliminar**: pide confirmación y la fila desaparece de `MENU`.
 - [ ] **Precio con decimales** → "El precio debe ser un número entero, sin
       centavos."
-- [ ] "Pedidos recibidos" muestra los pedidos (leídos de `/registroVentas`),
-      el más reciente primero, con columnas Fecha, Origen, Platos, Total y
-      Estado. Un pedido de varios platos ocupa **una sola fila**, con los
-      platos y sus notas listados dentro de la celda "Platos".
+- [ ] "Pedidos recibidos" muestra los pedidos leídos de `PEDIDOS`, el más
+      reciente primero.
 - [ ] "Cerrar sesión" vuelve a `index.html`.
-
-## pedido.html
-- [ ] Carga el menú sin necesidad de iniciar sesión.
-- [ ] Al hacer clic en un plato queda resaltado, el nombre y el **precio se
-      completan solos**, y el precio **no es editable**.
-- [ ] **Sin plato elegido**: el botón "Agregar al pedido" está deshabilitado.
-- [ ] **Carrito vacío**: el botón "Confirmar pedido" está deshabilitado.
-- [ ] **Agregar**: el plato pasa a la tabla "Tu pedido", el total se
-      actualiza, y la selección y las notas se limpian.
-- [ ] **Mismo plato con las mismas notas** agregado dos veces → se suman las
-      cantidades en una sola línea, no se duplica la fila.
-- [ ] **Mismo plato con notas distintas** → dos líneas separadas.
-- [ ] **Quitar** una línea la borra y recalcula el total.
-- [ ] **Cantidad 0 o vacía** → "La cantidad debe ser mayor a 0."
-- [ ] **Cantidad decimal** → "La cantidad debe ser un número entero."
-- [ ] **Cantidad > 99** (de una, o sumando al agregar dos veces) → mensaje de
-      máximo por plato.
-- [ ] **Tipo "En mesa" sin número de mesa** → "Indica el número de mesa."
-- [ ] **Tipo "Para llevar" / "Domicilio"**: el campo de mesa se oculta y el
-      pedido se puede confirmar sin él.
-- [ ] **Éxito**: pedido enviado → mensaje de confirmación, el carrito se
-      vacía, y el pedido aparece en `admin.html` y en `comanda.html` con
-      estado "Pendiente".
-- [ ] Si el admin elimina un plato que ya estaba en el carrito, se quita solo
-      con un aviso.
-- [ ] Si el admin **cambia el precio** de un plato que ya estaba en el
-      carrito, el total se recalcula con el precio nuevo y aparece el aviso.
-      El pedido guardado debe llevar el precio nuevo, no el viejo.
+- [ ] Si el webhook de n8n no responde (instancia apagada, URL mal
+      configurada), la tabla muestra "No se pudieron cargar los productos."
+      en vez de quedarse cargando para siempre.
 
 ## comanda.html
 - [ ] Sin sesión → redirige a `login.html`.
 - [ ] Con sesión: desaparece "Verificando sesión..." y aparece la lista.
 - [ ] Lista los pedidos **por atender**, del más antiguo al más reciente.
-- [ ] Cada tarjeta muestra el origen (mesa o tipo), la fecha, el estado, el
-      mesero si lo hay, y **todos** los platos del pedido con sus notas.
-- [ ] Un pedido nuevo aparece como "Pendiente" con el botón "Marcar en
+- [ ] Un pedido nuevo aparece como "Recibido" con el botón "Marcar en
       preparación".
-- [ ] El botón hace avanzar el pedido paso a paso: Pendiente → En preparación
-      → Listo para servir → Entregado.
+- [ ] El botón hace avanzar el pedido paso a paso: Recibido → En preparación
+      → En camino → Entregado.
 - [ ] Al llegar a "Entregado" el pedido **desaparece** de la comanda (pero
       sigue visible en la tabla de `admin.html`).
-- [ ] El cambio se refleja también en la tabla de pedidos de `admin.html`.
 - [ ] **Dos pantallas a la vez**: si otra sesión ya cambió el estado, el botón
       avisa "Otro usuario ya cambió el estado de este pedido." y no pisa el
-      cambio.
-- [ ] Un pedido guardado con el esquema viejo (sin `items`, con `platoId` y
-      `status`) se muestra como un pedido de un solo plato, y `"IN PROGRESS"`
-      aparece como "En preparación".
+      cambio (ver prueba de `409` arriba).
 
-## Seguridad (Realtime Database)
-Las reglas están abiertas a propósito (`.read`/`.write` en `true`): no hay
-nada que las bloquee a nivel de servidor. Lo único que queda por probar es
-que el JavaScript de la app siga validando antes de guardar:
-- [ ] `menu.html`/`admin.html` siguen rechazando nombre vacío o precio ≤ 0
-      **desde la app**, aunque las reglas ya no lo exijan.
-- [ ] `pedido.html` sigue rechazando cantidad inválida **desde la app**.
-- [ ] Sin sesión, leer o escribir `menu.json`/`registroVentas.json` con
-      `curl`/Postman → ya no da `permission_denied`, se puede leer y escribir
-      libremente.
-
-## Esquema para n8n
-- [ ] Un pedido hecho desde `pedido.html` queda en `/registroVentas` con
-      exactamente estos campos: `id`, `tipo_pedido`, `mesa_id`, `mesero`,
-      `items[]`, `subtotal`, `impuestos`, `total`, `estado`, `fecha_hora`,
-      `fecha_actualizacion`, `canal`.
-- [ ] Cada elemento de `items[]` trae `product_id`, `nombre`, `cantidad`,
-      `precio_unitario`, `subtotal_linea` y `notas`.
-- [ ] **Ningún campo falta ni viene `null`**: los opcionales (`mesa_id`,
-      `mesero`, `notas`) vienen como `""` y `impuestos` como `0`.
-- [ ] `subtotal_linea` es exactamente `cantidad * precio_unitario`, y
-      `subtotal` la suma de todos ellos.
-- [ ] `fecha_hora` y `fecha_actualizacion` son texto ISO 8601 **en UTC**
-      (terminan en `Z`).
-- [ ] `fecha_actualizacion` cambia al avanzar el estado desde `comanda.html`;
-      `fecha_hora` no.
-- [ ] `estado` es uno de `PENDING`, `IN_PREPARATION`, `READY`, `DELIVERED`
-      (mayúscula, guion bajo, sin espacios).
-- [ ] Un producto creado desde `admin.html` queda en `/menu` con `id`, `name`,
-      `price`, y además un registro nuevo en `/registroPlatos` con `id`,
-      `fecha`, `name`, `price`.
+## Seguridad
+- [ ] La URL de n8n (`N8N_BASE_URL`) no expone ningún token ni credencial de
+      Google: la autenticación con Sheets vive solo del lado de n8n.
+- [ ] `admin.html`/`comanda.html` siguen protegidos por sesión de Firebase
+      Authentication aunque los datos ya no estén en Firebase.
+- [ ] Los webhooks de n8n no requieren estar loggeado para responder — validar
+      si se necesita agregar autenticación (header, IP allowlist) antes de
+      exponer la instancia de n8n a internet en producción.
