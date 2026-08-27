@@ -1,48 +1,43 @@
-// RestoApp - Pedidos (/registroVentas en Realtime Database)
+// DeliveryBot - Pedidos (hoja PEDIDOS en Google Sheets, vía n8n)
 //
-// Forma de cada pedido, pensada para que el flujo de n8n la consuma directo:
+// Los pedidos los crea el bot de Telegram (a través de n8n), no la webapp:
+// este módulo solo lee la lista para comanda.html/admin.html y hace avanzar
+// el estado, todo contra los webhooks del workflow "API Webapp"
+// (ver n8n/deliverybot-workflow.json). n8n es quien de verdad lee/escribe en
+// Google Sheets y quien envía la notificación push al cliente por Telegram
+// cuando el estado cambia.
+//
+// Forma de cada pedido, tal como la entrega n8n:
 //
 //   {
-//     id, tipo_pedido, mesa_id, mesero,
-//     items: [ { product_id, nombre, cantidad, precio_unitario, subtotal_linea, notas } ],
-//     subtotal, impuestos, total,
-//     estado, fecha_hora, fecha_actualizacion, canal
+//     id, telegram_id, nombre_cliente, detalle_pedido: [ { product_id, nombre,
+//     cantidad, precio_unitario, subtotal_linea } ],
+//     total, estado, fecha, hora
 //   }
-//
-// Reglas que se respetan al escribir, porque n8n las asume:
-//   - Ningún campo se omite: los opcionales van como '' o 0, nunca null
-//     (Realtime Database borra las claves con valor null al escribir).
-//   - `fecha_hora` y `fecha_actualizacion` son ISO 8601 en UTC (toISOString()).
-//   - `subtotal_linea` viene precalculado para no tener que sumar dentro del
-//     array desde n8n.
-//
-// Los pedidos guardados con el esquema viejo (platoId/platoNombre/cantidad
-// planos, status 'PENDING' | 'IN PROGRESS') se normalizan al leerlos, así que
-// no hace falta migrar nada en la base.
 (function () {
     'use strict';
-
-    var RUTA = 'registroVentas';
 
     var CANTIDAD_MAX = 99;
     var ITEMS_MAX = 20;
     var NOTAS_MAX = 120;
+    var POLL_MS = 4000;
 
-    // El pedido avanza siempre hacia adelante y de a un paso.
-    var FLUJO = ['PENDING', 'IN_PREPARATION', 'READY', 'DELIVERED'];
+    // El pedido avanza siempre hacia adelante y de a un paso, tal como pide
+    // el enunciado: Recibido -> Preparación -> En camino -> Entregado.
+    var FLUJO = ['PENDING', 'IN_PREPARATION', 'ON_THE_WAY', 'DELIVERED'];
 
     var ETIQUETAS = {
-        PENDING: 'Pendiente',
+        PENDING: 'Recibido',
         IN_PREPARATION: 'En preparación',
-        READY: 'Listo para servir',
+        ON_THE_WAY: 'En camino',
         DELIVERED: 'Entregado'
     };
 
     // Texto del botón que lleva al estado siguiente.
     var ACCIONES = {
         PENDING: 'Marcar en preparación',
-        IN_PREPARATION: 'Marcar listo',
-        READY: 'Marcar entregado'
+        IN_PREPARATION: 'Marcar en camino',
+        ON_THE_WAY: 'Marcar entregado'
     };
 
     var TIPOS = {
@@ -60,31 +55,25 @@
         return estado !== 'DELIVERED';
     }
 
-    // --- Normalización de lectura ---
+    function url(path) {
+        return N8N_BASE_URL + '/pedidos' + (path || '');
+    }
 
-    // Acepta tanto el esquema actual como el viejo (un solo plato por
-    // registro, con los campos en la raíz) y devuelve siempre la forma nueva.
-    function normalizar(clave, val) {
+    function pedirJson(input, init) {
+        return fetch(input, init).then(function (resp) {
+            if (!resp.ok) throw new Error('n8n respondió ' + resp.status);
+            return resp.status === 204 ? null : resp.json();
+        });
+    }
+
+    // Acepta la forma que entrega n8n (detalle_pedido) y también un pedido
+    // web viejo (items), por si queda algún registro del esquema anterior.
+    function normalizar(val) {
         val = val || {};
 
-        var items = [];
-        if (Array.isArray(val.items)) {
-            items = val.items;
-        } else if (val.items && typeof val.items === 'object') {
-            // Realtime Database devuelve el array como objeto si alguna
-            // posición quedó vacía; se reconstruye respetando el orden.
-            items = Object.keys(val.items).sort().map(function (k) { return val.items[k]; });
-        } else if (val.platoId || val.platoNombre) {
-            var cantidad = Number(val.cantidad) || 0;
-            var total = Number(val.total) || 0;
-            items = [{
-                product_id: String(val.platoId || ''),
-                nombre: String(val.platoNombre || 'Sin nombre'),
-                cantidad: cantidad,
-                precio_unitario: cantidad ? total / cantidad : 0,
-                subtotal_linea: total,
-                notas: ''
-            }];
+        var items = val.detalle_pedido || val.items || [];
+        if (items && !Array.isArray(items) && typeof items === 'object') {
+            items = Object.keys(items).sort().map(function (k) { return items[k]; });
         }
 
         items = items.map(function (item) {
@@ -104,126 +93,70 @@
         var total = items.reduce(function (suma, item) { return suma + item.subtotal_linea; }, 0);
 
         return {
-            id: clave,
-            tipo_pedido: TIPOS[val.tipo_pedido] ? val.tipo_pedido : 'LLEVAR',
+            id: String(val.id_pedido || val.id || ''),
+            telegram_id: String(val.telegram_id || ''),
+            mesero: String(val.nombre_cliente || val.mesero || ''),
+            tipo_pedido: TIPOS[val.tipo_pedido] ? val.tipo_pedido : 'DOMICILIO',
             mesa_id: val.mesa_id === 0 || val.mesa_id ? val.mesa_id : '',
-            mesero: String(val.mesero || ''),
             items: items,
-            subtotal: Number(val.subtotal) || total,
-            impuestos: Number(val.impuestos) || 0,
-            total: Number(val.total) || total,
+            total: Number(val.total_pago || val.total) || total,
             estado: estadoDe(val),
-            fecha_hora: val.fecha_hora || val.fecha || '',
-            fecha_actualizacion: val.fecha_actualizacion || val.fecha_hora || val.fecha || '',
-            canal: String(val.canal || 'WEB')
+            fecha_hora: val.fecha_hora || (val.fecha ? val.fecha + 'T' + (val.hora || '00:00:00') : ''),
+            fecha_actualizacion: val.fecha_actualizacion || val.fecha_hora || ''
         };
     }
 
-    // `status: 'IN PROGRESS'` es el nombre viejo de IN_PREPARATION; un
-    // registro sin estado se trata como pendiente.
     function estadoDe(val) {
         var bruto = val.estado || val.status || '';
-        if (bruto === 'IN PROGRESS' || bruto === 'IN_PROGRESS') return 'IN_PREPARATION';
         return FLUJO.indexOf(bruto) !== -1 ? bruto : 'PENDING';
     }
 
-    // --- Validación de escritura ---
-
-    function validarItem(item) {
-        if (!item || !item.product_id) return 'El plato no es válido.';
-        if (!item.cantidad || item.cantidad <= 0) return 'La cantidad debe ser mayor a 0.';
-        if (Math.floor(item.cantidad) !== item.cantidad) return 'La cantidad debe ser un número entero.';
-        if (item.cantidad > CANTIDAD_MAX) return 'La cantidad máxima por plato es ' + CANTIDAD_MAX + '.';
-        if (!isFinite(item.precio_unitario) || item.precio_unitario <= 0) return 'El precio del plato no es válido.';
-        if (String(item.notas || '').length > NOTAS_MAX) return 'Las notas no pueden superar ' + NOTAS_MAX + ' caracteres.';
-        return null;
-    }
-
-    function validar(datos) {
-        if (!datos || !datos.items || !datos.items.length) return 'Agrega al menos un plato al pedido.';
-        if (datos.items.length > ITEMS_MAX) return 'El pedido no puede tener más de ' + ITEMS_MAX + ' platos distintos.';
-        if (!TIPOS[datos.tipo_pedido]) return 'Elige el tipo de pedido.';
-        if (datos.tipo_pedido === 'MESA' && !String(datos.mesa_id || '').trim()) return 'Indica el número de mesa.';
-        for (var i = 0; i < datos.items.length; i++) {
-            var error = validarItem(datos.items[i]);
-            if (error) return error;
-        }
-        return null;
-    }
-
-    // --- Escritura ---
-
-    function crear(datos) {
-        var error = validar(datos);
-        if (error) return Promise.reject(new Error(error));
-
-        var items = datos.items.map(function (item) {
-            return {
-                product_id: String(item.product_id),
-                nombre: String(item.nombre),
-                cantidad: item.cantidad,
-                precio_unitario: item.precio_unitario,
-                subtotal_linea: item.cantidad * item.precio_unitario,
-                notas: String(item.notas || '')
-            };
-        });
-
-        var subtotal = items.reduce(function (suma, item) { return suma + item.subtotal_linea; }, 0);
-        var impuestos = Number(datos.impuestos) || 0;
-        var ahora = new Date().toISOString();
-
-        // push() reserva la clave antes de escribir: se guarda esa misma
-        // clave como `id` dentro del registro, así quien lo lea no tiene que
-        // reconstruirla desde la clave del nodo.
-        var refVenta = firebase.database().ref(RUTA).push();
-        var pedido = {
-            id: refVenta.key,
-            tipo_pedido: datos.tipo_pedido,
-            mesa_id: datos.tipo_pedido === 'MESA' ? String(datos.mesa_id).trim() : '',
-            mesero: String(datos.mesero || ''),
-            items: items,
-            subtotal: subtotal,
-            impuestos: impuestos,
-            total: subtotal + impuestos,
-            estado: 'PENDING',
-            fecha_hora: ahora,
-            fecha_actualizacion: ahora,
-            canal: String(datos.canal || 'WEB')
-        };
-
-        return refVenta.set(pedido).then(function () { return pedido; });
-    }
-
-    // Avanza un pedido al estado siguiente. Va por transacción para que dos
-    // pantallas de cocina no se pisen: si otra ya lo movió, esta aborta.
+    // Avanza un pedido al estado siguiente. n8n valida en el servidor que
+    // nadie más lo haya movido antes (equivalente a la transacción que hacía
+    // Firebase) y envía la notificación push a Telegram si el cambio se
+    // aplicó.
     function avanzar(id, estadoEsperado) {
         var destino = siguiente(estadoEsperado);
         if (!destino) return Promise.reject(new Error('El pedido ya está entregado.'));
 
-        return firebase.database().ref(RUTA).child(id).transaction(function (actual) {
-            if (actual === null) return actual;            // se borró: no lo recreamos
-            if (estadoDe(actual) !== estadoEsperado) return; // ya lo movió alguien más
-            actual.estado = destino;
-            actual.fecha_actualizacion = new Date().toISOString();
-            delete actual.status;                          // resto del esquema viejo
-            return actual;
-        }).then(function (resultado) {
-            if (!resultado.committed) throw new Error('Otro usuario ya cambió el estado de este pedido.');
+        return pedirJson(url('/' + encodeURIComponent(id) + '/avanzar'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ estado_esperado: estadoEsperado, estado_destino: destino })
+        }).then(function (resp) {
+            if (resp && resp.conflicto) throw new Error('Otro usuario ya cambió el estado de este pedido.');
             return destino;
         });
     }
 
-    // --- Lectura ---
-
+    // Sondeo: no hay push nativo desde Sheets al navegador, así que se
+    // pregunta cada POLL_MS y solo se repinta si algo cambió.
     function escuchar(limite, alRecibir, alFallar) {
-        firebase.database().ref(RUTA).limitToLast(limite).on('value', function (snap) {
-            var lista = [];
-            snap.forEach(function (hijo) { lista.push(normalizar(hijo.key, hijo.val())); });
-            alRecibir(lista);
-        }, function (err) {
-            console.error('Error leyendo los pedidos:', err);
-            if (alFallar) alFallar(err);
-        });
+        var ultimoJson = null;
+        var detenido = false;
+
+        function ciclo() {
+            if (detenido) return;
+            pedirJson(url('?limite=' + limite))
+                .then(function (lista) {
+                    lista = (lista || []).map(normalizar);
+                    var comoJson = JSON.stringify(lista);
+                    if (comoJson !== ultimoJson) {
+                        ultimoJson = comoJson;
+                        alRecibir(lista);
+                    }
+                })
+                .catch(function (err) {
+                    console.error('Error leyendo los pedidos:', err);
+                    if (alFallar) alFallar(err);
+                })
+                .then(function () {
+                    if (!detenido) setTimeout(ciclo, POLL_MS);
+                });
+        }
+        ciclo();
+
+        return function detener() { detenido = true; };
     }
 
     window.RestoVentas = {
@@ -232,12 +165,11 @@
         ACCIONES: ACCIONES,
         TIPOS: TIPOS,
         CANTIDAD_MAX: CANTIDAD_MAX,
+        ITEMS_MAX: ITEMS_MAX,
         NOTAS_MAX: NOTAS_MAX,
         siguiente: siguiente,
         activo: activo,
         normalizar: normalizar,
-        validar: validar,
-        crear: crear,
         avanzar: avanzar,
         escuchar: escuchar
     };

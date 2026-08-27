@@ -1,21 +1,21 @@
-// RestoApp - Productos del menú (/menu en Realtime Database)
+// DeliveryBot - Productos del menú (hoja MENU en Google Sheets, vía n8n)
 //
-// Forma de cada producto:        { id, name: string, price: number }
-// Forma de cada registro de log: { id, fecha: string ISO, name: string, price: number }
+// Forma de cada producto: { id, name, price, category, stock }
+// n8n es el único que habla con Google Sheets: este módulo solo llama a los
+// webhooks expuestos por el workflow "API Webapp" (ver n8n/deliverybot-workflow.json).
 //
-// Cada vez que se crea un producto queda, además de en /menu (el estado
-// actual), una copia histórica en /registroPlatos: ese log nunca se edita ni
-// se borra, así que el nombre esquema queda estable para el flujo de n8n que
-// lee esta base de datos.
+// La hoja MENU no tiene "tiempo real" nativo como Firebase, así que la
+// lectura se hace por sondeo (polling) cada POLL_MS.
 (function () {
     'use strict';
 
     var NOMBRE_MAX = 60;
     var PRECIO_MAX = 10000000;
+    var POLL_MS = 5000;
+    var CATEGORIAS = ['Bebidas', 'Comidas', 'Snacks'];
 
-    function ref(id) {
-        var base = firebase.database().ref('menu');
-        return id ? base.child(id) : base;
+    function url(path) {
+        return N8N_BASE_URL + '/menu' + (path || '');
     }
 
     function validar(nombre, precio) {
@@ -27,75 +27,93 @@
         return null;
     }
 
-    // Escucha en tiempo real: la lista se redibuja sola cuando el admin
-    // crea, edita o elimina un producto.
-    function escuchar(alRecibir, alFallar) {
-        ref().on('value', function (snap) {
-            var lista = [];
-            snap.forEach(function (hijo) {
-                var val = hijo.val() || {};
-                lista.push({
-                    id: hijo.key,
-                    name: String(val.name || 'Sin nombre'),
-                    price: Number(val.price) || 0
-                });
-            });
-            lista.sort(function (a, b) { return a.name.localeCompare(b.name, 'es'); });
-            alRecibir(lista);
-        }, function (err) {
-            console.error('Error leyendo el menú:', err);
-            if (alFallar) alFallar(err);
-        });
-    }
-
-    // push() genera la clave antes de escribir nada: se usa esa misma clave
-    // como valor del campo `id`, así el registro queda con su propio id
-    // guardado en vez de depender de que quien lo lea lo reconstruya desde
-    // la clave del nodo. La escritura en /menu y /registroPlatos se hace en
-    // una sola actualización multi-ruta para que quede atómica.
-    function crear(nombre, precio) {
-        var error = validar(nombre, precio);
-        if (error) return Promise.reject(new Error(error));
-
-        var nuevaRef = ref().push();
-        var logRef = firebase.database().ref('registroPlatos').push();
-
-        var updates = {};
-        updates['menu/' + nuevaRef.key] = { id: nuevaRef.key, name: nombre, price: precio };
-        updates['registroPlatos/' + logRef.key] = {
-            id: logRef.key,
-            fecha: new Date().toISOString(),
-            name: nombre,
-            price: precio
+    function normalizar(val) {
+        val = val || {};
+        return {
+            id: String(val.id_producto || val.id || ''),
+            name: String(val.nombre || val.name || 'Sin nombre'),
+            price: Number(val.precio || val.price) || 0,
+            category: String(val.categoria || val.category || 'Comidas'),
+            stock: Number(val.stock) || 0
         };
-        return firebase.database().ref().update(updates);
     }
 
-    // update() sobre una ruta borrada la vuelve a crear, así que se edita por
-    // transacción: si el producto ya no existe (lo eliminó otra sesión), se
-    // aborta en vez de resucitarlo.
-    function actualizar(id, nombre, precio) {
+    function pedirJson(input, init) {
+        return fetch(input, init).then(function (resp) {
+            if (!resp.ok) throw new Error('n8n respondió ' + resp.status);
+            return resp.status === 204 ? null : resp.json();
+        });
+    }
+
+    // Sondeo: pide la lista cada POLL_MS y avisa solo si cambió, para no
+    // repintar la pantalla sin necesidad.
+    function escuchar(alRecibir, alFallar) {
+        var ultimoJson = null;
+        var detenido = false;
+
+        function ciclo() {
+            if (detenido) return;
+            pedirJson(url())
+                .then(function (lista) {
+                    lista = (lista || []).map(normalizar);
+                    lista.sort(function (a, b) { return a.name.localeCompare(b.name, 'es'); });
+                    var comoJson = JSON.stringify(lista);
+                    if (comoJson !== ultimoJson) {
+                        ultimoJson = comoJson;
+                        alRecibir(lista);
+                    }
+                })
+                .catch(function (err) {
+                    console.error('Error leyendo el menú:', err);
+                    if (alFallar) alFallar(err);
+                })
+                .then(function () {
+                    if (!detenido) setTimeout(ciclo, POLL_MS);
+                });
+        }
+        ciclo();
+
+        return function detener() { detenido = true; };
+    }
+
+    function crear(nombre, precio, categoria, stock) {
         var error = validar(nombre, precio);
         if (error) return Promise.reject(new Error(error));
 
-        // Se incluye `id` también al editar para completarlo en productos
-        // creados antes de este cambio, que todavía no lo tenían guardado.
-        // Solo se toca /menu: /registroPlatos es un histórico y no se edita.
-        return ref(id).transaction(function (actual) {
-            if (actual === null) return actual;
-            return { id: id, name: nombre, price: precio };
-        }).then(function (resultado) {
-            if (!resultado.committed || !resultado.snapshot.exists()) {
-                throw new Error('El producto ya no existe en el menú.');
-            }
-        });
+        return pedirJson(url(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                nombre: nombre,
+                precio: precio,
+                categoria: CATEGORIAS.indexOf(categoria) !== -1 ? categoria : 'Comidas',
+                stock: Number(stock) || 0
+            })
+        }).then(normalizar);
+    }
+
+    function actualizar(id, nombre, precio, categoria, stock) {
+        var error = validar(nombre, precio);
+        if (error) return Promise.reject(new Error(error));
+
+        return pedirJson(url('/' + encodeURIComponent(id)), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                nombre: nombre,
+                precio: precio,
+                categoria: categoria,
+                stock: stock
+            })
+        }).then(function () {});
     }
 
     function eliminar(id) {
-        return ref(id).remove();
+        return pedirJson(url('/' + encodeURIComponent(id)), { method: 'DELETE' }).then(function () {});
     }
 
     window.RestoMenu = {
+        CATEGORIAS: CATEGORIAS,
         validar: validar,
         escuchar: escuchar,
         crear: crear,

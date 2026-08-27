@@ -1,0 +1,723 @@
+{
+  "name": "DeliveryBot",
+  "meta": { "instanceId": "deliverybot" },
+  "settings": { "executionOrder": "v1" },
+  "nodes": [
+    {
+      "id": "tg-trigger",
+      "name": "Telegram - Mensaje entrante",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [-1200, -200],
+      "parameters": { "updates": ["message", "callback_query"] },
+      "credentials": { "telegramApi": { "name": "DeliveryBot Telegram" } },
+      "notes": "Dispara con cada mensaje o botón (callback_query) que el cliente envía al bot."
+    },
+    {
+      "id": "fn-router",
+      "name": "Router de sesión",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [-980, -200],
+      "parameters": {
+        "functionCode": "// Determina en qué pantalla del wizard está el usuario, leyendo\n// telegram_id + pantalla_actual desde la hoja SESSIONS (nodo siguiente).\n// Comandos globales: /start reinicia el flujo, /menu vuelve al inicio,\n// /pedidos muestra historial.\nconst update = items[0].json;\nconst msg = update.message || (update.callback_query && update.callback_query.message) || {};\nconst texto = update.message ? (update.message.text || '') : (update.callback_query ? update.callback_query.data : '');\nconst telegramId = String((update.message && update.message.from && update.message.from.id) || (update.callback_query && update.callback_query.from.id));\nconst nombreCompleto = ((update.message && update.message.from) || (update.callback_query && update.callback_query.from) || {});\n\nreturn [{\n  json: {\n    telegram_id: telegramId,\n    nombre_completo: (nombreCompleto.first_name || '') + ' ' + (nombreCompleto.last_name || ''),\n    chat_id: msg.chat ? msg.chat.id : telegramId,\n    texto: (texto || '').trim(),\n    es_comando_start: /^\\/start/.test(texto || ''),\n    es_comando_menu: /^\\/menu/.test(texto || ''),\n    es_comando_pedidos: /^\\/(pedidos|historial)/.test(texto || ''),\n    es_callback: !!update.callback_query\n  }\n}];"
+      },
+      "notes": "Extrae telegram_id, texto/callback y comandos globales del update crudo de Telegram."
+    },
+    {
+      "id": "sheets-leer-sesion",
+      "name": "SESSIONS - Leer sesión actual",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [-760, -200],
+      "parameters": {
+        "documentId": { "mode": "list", "value": "REEMPLAZAR_CON_ID_DE_DELIVERYBOT_DB" },
+        "sheetName": { "mode": "name", "value": "SESSIONS" },
+        "operation": "lookup",
+        "lookupColumn": "telegram_id",
+        "lookupValue": "={{$json.telegram_id}}"
+      },
+      "credentials": { "googleSheetsOAuth2Api": { "name": "DeliveryBot Google Sheets" } },
+      "notes": "Busca la fila de SESSIONS para este telegram_id. Si no existe, la siguiente rama la crea con pantalla_actual = MENU."
+    },
+    {
+      "id": "switch-comando",
+      "name": "¿Comando o continuación?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [-540, -200],
+      "parameters": {
+        "rules": {
+          "values": [
+            { "outputKey": "reiniciar", "conditions": { "conditions": [{ "leftValue": "={{$('Router de sesión').item.json.es_comando_start}}", "rightValue": true, "operator": { "type": "boolean", "operation": "true" } }] } },
+            { "outputKey": "menu", "conditions": { "conditions": [{ "leftValue": "={{$('Router de sesión').item.json.es_comando_menu}}", "rightValue": true, "operator": { "type": "boolean", "operation": "true" } }] } },
+            { "outputKey": "historial", "conditions": { "conditions": [{ "leftValue": "={{$('Router de sesión').item.json.es_comando_pedidos}}", "rightValue": true, "operator": { "type": "boolean", "operation": "true" } }] } }
+          ]
+        },
+        "fallbackOutput": "continuar_wizard"
+      },
+      "notes": "Cuatro salidas: reiniciar (/start), menu (/menu), historial (/pedidos) o continuar_wizard (respuesta dentro del flujo de pedido)."
+    },
+    {
+      "id": "sheets-menu-categorias",
+      "name": "MENU - Leer categorías",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [-320, -420],
+      "parameters": {
+        "documentId": { "mode": "list", "value": "REEMPLAZAR_CON_ID_DE_DELIVERYBOT_DB" },
+        "sheetName": { "mode": "name", "value": "MENU" },
+        "operation": "read"
+      },
+      "credentials": { "googleSheetsOAuth2Api": { "name": "DeliveryBot Google Sheets" } },
+      "notes": "Lee toda la hoja MENU para armar los botones de categoría (Bebidas/Comidas/Snacks) con productos en stock > 0."
+    },
+    {
+      "id": "fn-teclado-categorias",
+      "name": "Armar teclado de categorías",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [-100, -420],
+      "parameters": {
+        "functionCode": "const filas = items.map(i => i.json);\nconst categorias = [...new Set(filas.filter(f => Number(f.stock) > 0).map(f => f.categoria))];\nconst teclado = categorias.map(c => ([{ text: c, callback_data: 'CAT:' + c }]));\nreturn [{ json: {\n  chat_id: $('Router de sesión').item.json.chat_id,\n  telegram_id: $('Router de sesión').item.json.telegram_id,\n  texto: '👋 Bienvenido a DeliveryBot. Elige una categoría:',\n  teclado,\n  pantalla_actual: 'CATEGORIA',\n  carrito_temporal: '[]'\n}}];"
+      }
+    },
+    {
+      "id": "sheets-guardar-sesion-categoria",
+      "name": "SESSIONS - Guardar pantalla CATEGORIA",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [120, -420],
+      "parameters": {
+        "documentId": { "mode": "list", "value": "REEMPLAZAR_CON_ID_DE_DELIVERYBOT_DB" },
+        "sheetName": { "mode": "name", "value": "SESSIONS" },
+        "operation": "upsert",
+        "matchingColumns": ["telegram_id"],
+        "columns": {
+          "value": {
+            "telegram_id": "={{$json.telegram_id}}",
+            "pantalla_actual": "={{$json.pantalla_actual}}",
+            "carrito_temporal": "={{$json.carrito_temporal}}",
+            "ultimo_cambio": "={{$now.toISO()}}"
+          }
+        }
+      },
+      "credentials": { "googleSheetsOAuth2Api": { "name": "DeliveryBot Google Sheets" } }
+    },
+    {
+      "id": "tg-enviar-categorias",
+      "name": "Telegram - Enviar categorías",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [340, -420],
+      "parameters": {
+        "chatId": "={{$('Armar teclado de categorías').item.json.chat_id}}",
+        "text": "={{$('Armar teclado de categorías').item.json.texto}}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": { "rows": "={{$('Armar teclado de categorías').item.json.teclado}}" }
+      },
+      "credentials": { "telegramApi": { "name": "DeliveryBot Telegram" } }
+    },
+    {
+      "id": "fn-wizard",
+      "name": "Wizard - siguiente paso",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [-320, 60],
+      "parameters": {
+        "functionCode": "// Máquina de estados del wizard, según SESSIONS.pantalla_actual:\n//   CATEGORIA -> el usuario tocó una categoría (callback CAT:xxx): se listan productos\n//   PRODUCTO  -> el usuario tocó un producto (callback PROD:id): se pide cantidad\n//   CANTIDAD  -> el usuario escribió un número: se agrega al carrito y se pregunta\n//                '¿Agregar otro producto o confirmar?'\n//   CONFIRMAR -> el usuario tocó 'Confirmar pedido' (callback CONFIRM) o 'Agregar otro' (callback MORE)\n// El resultado siempre incluye: accion (uno de RESPONDER | CREAR_PEDIDO),\n// mensaje, teclado y el nuevo estado de sesión a guardar.\nconst sesionPrevia = $('SESSIONS - Leer sesión actual').item.json || {};\nconst router = $('Router de sesión').item.json;\nconst pantalla = sesionPrevia.pantalla_actual || 'CATEGORIA';\nconst carrito = JSON.parse(sesionPrevia.carrito_temporal || '[]');\nconst texto = router.texto;\n\nfunction responder(mensaje, teclado, siguientePantalla, carritoNuevo) {\n  return [{ json: {\n    accion: 'RESPONDER',\n    chat_id: router.chat_id,\n    telegram_id: router.telegram_id,\n    nombre_completo: router.nombre_completo,\n    mensaje, teclado,\n    pantalla_actual: siguientePantalla,\n    carrito_temporal: JSON.stringify(carritoNuevo || carrito)\n  }}];\n}\n\nif (pantalla === 'CATEGORIA' && texto.startsWith('CAT:')) {\n  const categoria = texto.slice(4);\n  return responder('Elige un producto de ' + categoria + ':', null, 'PRODUCTO_' + categoria, carrito);\n}\n\nif (pantalla.startsWith('PRODUCTO_') && texto.startsWith('PROD:')) {\n  const productId = texto.slice(5);\n  return responder('¿Cuántas unidades quieres? (escribe un número)', null, 'CANTIDAD:' + productId, carrito);\n}\n\nif (pantalla.startsWith('CANTIDAD:')) {\n  const productId = pantalla.split(':')[1];\n  const cantidad = parseInt(texto, 10);\n  if (!cantidad || cantidad <= 0 || cantidad > 99) {\n    return responder('Cantidad no válida. Escribe un número entre 1 y 99.', null, pantalla, carrito);\n  }\n  const nuevoCarrito = carrito.concat([{ product_id: productId, cantidad }]);\n  return responder(\n    'Agregado. ¿Quieres agregar otro producto o confirmar el pedido?',\n    [[{ text: 'Agregar otro', callback_data: 'MORE' }], [{ text: 'Confirmar pedido', callback_data: 'CONFIRM' }]],\n    'CONFIRMAR', nuevoCarrito\n  );\n}\n\nif (pantalla === 'CONFIRMAR' && texto === 'MORE') {\n  return responder('Elige una categoría:', null, 'CATEGORIA', carrito);\n}\n\nif (pantalla === 'CONFIRMAR' && texto === 'CONFIRM') {\n  return [{ json: {\n    accion: 'CREAR_PEDIDO',\n    chat_id: router.chat_id,\n    telegram_id: router.telegram_id,\n    nombre_completo: router.nombre_completo,\n    carrito\n  }}];\n}\n\n// Cualquier otra entrada fuera de secuencia: se reinicia el wizard.\nreturn responder('No entendí esa opción. Escribe /menu para ver el menú de nuevo.', null, 'CATEGORIA', []);"
+      },
+      "notes": "Toda la lógica conversacional del carrito vive acá, en un solo lugar, para que sea fácil de auditar."
+    },
+    {
+      "id": "if-crear-pedido",
+      "name": "¿Confirmó el pedido?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-100, 60],
+      "parameters": {
+        "conditions": { "conditions": [{ "leftValue": "={{$json.accion}}", "rightValue": "CREAR_PEDIDO", "operator": { "type": "string", "operation": "equals" } }] }
+      }
+    },
+    {
+      "id": "sheets-guardar-sesion-wizard",
+      "name": "SESSIONS - Guardar avance del wizard",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [120, 220],
+      "parameters": {
+        "documentId": { "mode": "list", "value": "REEMPLAZAR_CON_ID_DE_DELIVERYBOT_DB" },
+        "sheetName": { "mode": "name", "value": "SESSIONS" },
+        "operation": "upsert",
+        "matchingColumns": ["telegram_id"],
+        "columns": {
+          "value": {
+            "telegram_id": "={{$json.telegram_id}}",
+            "pantalla_actual": "={{$json.pantalla_actual}}",
+            "carrito_temporal": "={{$json.carrito_temporal}}",
+            "ultimo_cambio": "={{$now.toISO()}}"
+          }
+        }
+      },
+      "credentials": { "googleSheetsOAuth2Api": { "name": "DeliveryBot Google Sheets" } }
+    },
+    {
+      "id": "tg-responder-wizard",
+      "name": "Telegram - Responder paso del wizard",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [340, 220],
+      "parameters": {
+        "chatId": "={{$json.chat_id}}",
+        "text": "={{$json.mensaje}}",
+        "replyMarkup": "={{$json.teclado ? 'inlineKeyboard' : 'none'}}",
+        "inlineKeyboard": { "rows": "={{$json.teclado}}" }
+      },
+      "credentials": { "telegramApi": { "name": "DeliveryBot Telegram" } }
+    },
+    {
+      "id": "sheets-menu-para-validar",
+      "name": "MENU - Leer para validar stock/precio",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [120, 60],
+      "parameters": {
+        "documentId": { "mode": "list", "value": "REEMPLAZAR_CON_ID_DE_DELIVERYBOT_DB" },
+        "sheetName": { "mode": "name", "value": "MENU" },
+        "operation": "read"
+      },
+      "credentials": { "googleSheetsOAuth2Api": { "name": "DeliveryBot Google Sheets" } },
+      "notes": "Validador de Stock + Calculador de Precios: se leen precio y stock vigentes en Sheets, nunca lo que el usuario recuerde del chat."
+    },
+    {
+      "id": "fn-armar-pedido",
+      "name": "Validar stock y calcular total",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [340, 60],
+      "parameters": {
+        "functionCode": "const wizard = $('Wizard - siguiente paso').item.json;\nconst menu = items.map(i => i.json); // filas de MENU\nconst detalle = [];\nconst sinStock = [];\n\nfor (const linea of wizard.carrito) {\n  const prod = menu.find(p => String(p.id_producto) === String(linea.product_id));\n  if (!prod) { sinStock.push(linea.product_id); continue; }\n  if (Number(prod.stock) < linea.cantidad) { sinStock.push(prod.nombre); continue; }\n  const precio = Number(prod.precio);\n  detalle.push({\n    product_id: prod.id_producto,\n    nombre: prod.nombre,\n    cantidad: linea.cantidad,\n    precio_unitario: precio,\n    subtotal_linea: precio * linea.cantidad\n  });\n}\n\nif (sinStock.length) {\n  return [{ json: {\n    valido: false,\n    chat_id: wizard.chat_id,\n    mensaje: '⚠️ No hay stock suficiente de: ' + sinStock.join(', ') + '. Vuelve a intentar con /menu.'\n  }}];\n}\n\nconst total = detalle.reduce((s, i) => s + i.subtotal_linea, 0);\nconst ahora = new Date();\nconst idPedido = 'PED-' + ahora.getTime();\n\nreturn [{ json: {\n  valido: true,\n  id_pedido: idPedido,\n  telegram_id: wizard.telegram_id,\n  chat_id: wizard.chat_id,\n  nombre_completo: wizard.nombre_completo,\n  detalle_pedido: JSON.stringify(detalle),\n  detalle_pedido_obj: detalle,\n  total_pago: total,\n  estado: 'PENDING',\n  fecha: ahora.toISOString().slice(0, 10),\n  hora: ahora.toTimeString().slice(0, 8)\n}}];"
+      },
+      "notes": "Motor de Procesamiento: Validador de Stock + Calculador de Precios, tal como pide la consigna. El total nunca lo calcula el cliente."
+    },
+    {
+      "id": "if-stock-valido",
+      "name": "¿Stock suficiente?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [560, 60],
+      "parameters": {
+        "conditions": { "conditions": [{ "leftValue": "={{$json.valido}}", "rightValue": true, "operator": { "type": "boolean", "operation": "true" } }] }
+      }
+    },
+    {
+      "id": "tg-sin-stock",
+      "name": "Telegram - Avisar sin stock",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [780, 220],
+      "parameters": { "chatId": "={{$json.chat_id}}", "text": "={{$json.mensaje}}" },
+      "credentials": { "telegramApi": { "name": "DeliveryBot Telegram" } }
+    },
+    {
+      "id": "sheets-pedidos-crear",
+      "name": "PEDIDOS - Crear registro",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [780, -60],
+      "parameters": {
+        "documentId": { "mode": "list", "value": "REEMPLAZAR_CON_ID_DE_DELIVERYBOT_DB" },
+        "sheetName": { "mode": "name", "value": "PEDIDOS" },
+        "operation": "append",
+        "columns": {
+          "value": {
+            "id_pedido": "={{$json.id_pedido}}",
+            "id_usuario": "={{$json.telegram_id}}",
+            "detalles_pedido": "={{$json.detalle_pedido}}",
+            "total_pago": "={{$json.total_pago}}",
+            "estado": "={{$json.estado}}",
+            "fecha": "={{$json.fecha}}",
+            "hora": "={{$json.hora}}"
+          }
+        }
+      },
+      "credentials": { "googleSheetsOAuth2Api": { "name": "DeliveryBot Google Sheets" } }
+    },
+    {
+      "id": "sheets-usuarios-upsert",
+      "name": "USUARIOS - Registrar/actualizar cliente",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [780, -220],
+      "parameters": {
+        "documentId": { "mode": "list", "value": "REEMPLAZAR_CON_ID_DE_DELIVERYBOT_DB" },
+        "sheetName": { "mode": "name", "value": "USUARIOS" },
+        "operation": "upsert",
+        "matchingColumns": ["telegram_id"],
+        "columns": {
+          "value": {
+            "telegram_id": "={{$json.telegram_id}}",
+            "nombre_completo": "={{$json.nombre_completo}}"
+          }
+        }
+      },
+      "credentials": { "googleSheetsOAuth2Api": { "name": "DeliveryBot Google Sheets" } },
+      "notes": "No pisa departamento/oficina ni puntos_lealtad si ya existían: upsert solo toca las columnas indicadas."
+    },
+    {
+      "id": "fn-descontar-stock",
+      "name": "Calcular nuevo stock por producto",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1000, -60],
+      "parameters": {
+        "functionCode": "const armado = $('Validar stock y calcular total').item.json;\nconst menu = $('MENU - Leer para validar stock/precio').all().map(i => i.json);\nreturn armado.detalle_pedido_obj.map(linea => {\n  const prod = menu.find(p => String(p.id_producto) === String(linea.product_id));\n  return { json: {\n    id_producto: linea.product_id,\n    stock: Math.max(0, Number(prod.stock) - linea.cantidad)\n  }};\n});"
+      }
+    },
+    {
+      "id": "sheets-menu-descontar-stock",
+      "name": "MENU - Descontar stock vendido",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [1220, -60],
+      "parameters": {
+        "documentId": { "mode": "list", "value": "REEMPLAZAR_CON_ID_DE_DELIVERYBOT_DB" },
+        "sheetName": { "mode": "name", "value": "MENU" },
+        "operation": "update",
+        "matchingColumns": ["id_producto"],
+        "columns": { "value": { "id_producto": "={{$json.id_producto}}", "stock": "={{$json.stock}}" } }
+      },
+      "credentials": { "googleSheetsOAuth2Api": { "name": "DeliveryBot Google Sheets" } }
+    },
+    {
+      "id": "tg-confirmar-cliente",
+      "name": "Telegram - Confirmar al cliente",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1000, -220],
+      "parameters": {
+        "chatId": "={{$('Validar stock y calcular total').item.json.chat_id}}",
+        "text": "=✅ Pedido *{{$('Validar stock y calcular total').item.json.id_pedido}}* confirmado.\nTotal: ${{$('Validar stock y calcular total').item.json.total_pago}}\nEstado: Recibido.\nTe avisaré aquí mismo cuando cambie de estado.",
+        "additionalFields": { "parse_mode": "Markdown" }
+      },
+      "credentials": { "telegramApi": { "name": "DeliveryBot Telegram" } }
+    },
+    {
+      "id": "tg-notificar-cocina",
+      "name": "Telegram - Notificar a cocina",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1220, -220],
+      "parameters": {
+        "chatId": "={{$env.TELEGRAM_CHAT_ID_COCINA}}",
+        "text": "=🔔 Nuevo pedido {{$('Validar stock y calcular total').item.json.id_pedido}} de {{$('Validar stock y calcular total').item.json.nombre_completo}} por ${{$('Validar stock y calcular total').item.json.total_pago}}."
+      },
+      "credentials": { "telegramApi": { "name": "DeliveryBot Telegram" } },
+      "notes": "TELEGRAM_CHAT_ID_COCINA es el chat/grupo de Telegram del personal de cocina, configurado como variable de entorno de n8n."
+    },
+    {
+      "id": "webhook-menu",
+      "name": "Webhook - /menu (GET/POST)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-1200, 480],
+      "parameters": { "path": "menu", "httpMethod": "GET,POST", "responseMode": "responseNode" },
+      "notes": "Usado por admin.html (js/menu.js) para listar y crear productos en la hoja MENU."
+    },
+    {
+      "id": "webhook-menu-id",
+      "name": "Webhook - /menu/:id (PUT/DELETE)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-1200, 660],
+      "parameters": { "path": "menu/:id", "httpMethod": "PUT,DELETE", "responseMode": "responseNode" },
+      "notes": "Usado por admin.html para editar o eliminar un producto puntual."
+    },
+    {
+      "id": "switch-metodo-menu",
+      "name": "¿Qué operación de MENU?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [-980, 480],
+      "parameters": {
+        "rules": {
+          "values": [
+            { "outputKey": "listar", "conditions": { "conditions": [{ "leftValue": "={{$json.headers.__method || $json.query.method || 'GET'}}", "rightValue": "GET", "operator": { "type": "string", "operation": "equals" } }] } }
+          ]
+        },
+        "fallbackOutput": "crear"
+      }
+    },
+    {
+      "id": "sheets-menu-listar",
+      "name": "MENU - Listar (para la webapp)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [-760, 400],
+      "parameters": {
+        "documentId": { "mode": "list", "value": "REEMPLAZAR_CON_ID_DE_DELIVERYBOT_DB" },
+        "sheetName": { "mode": "name", "value": "MENU" },
+        "operation": "read"
+      },
+      "credentials": { "googleSheetsOAuth2Api": { "name": "DeliveryBot Google Sheets" } }
+    },
+    {
+      "id": "sheets-menu-crear",
+      "name": "MENU - Crear producto (webapp)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [-760, 560],
+      "parameters": {
+        "documentId": { "mode": "list", "value": "REEMPLAZAR_CON_ID_DE_DELIVERYBOT_DB" },
+        "sheetName": { "mode": "name", "value": "MENU" },
+        "operation": "append",
+        "columns": {
+          "value": {
+            "id_producto": "={{'PROD-' + Date.now()}}",
+            "nombre": "={{$json.body.nombre}}",
+            "descripcion": "={{$json.body.descripcion || ''}}",
+            "precio": "={{$json.body.precio}}",
+            "categoria": "={{$json.body.categoria}}",
+            "stock": "={{$json.body.stock}}"
+          }
+        }
+      },
+      "credentials": { "googleSheetsOAuth2Api": { "name": "DeliveryBot Google Sheets" } }
+    },
+    {
+      "id": "respond-menu",
+      "name": "Responder JSON (MENU)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [-540, 480],
+      "parameters": { "respondWith": "allIncomingItems", "options": {} }
+    },
+    {
+      "id": "switch-metodo-menu-id",
+      "name": "¿Editar o eliminar?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [-980, 660],
+      "parameters": {
+        "rules": {
+          "values": [
+            { "outputKey": "editar", "conditions": { "conditions": [{ "leftValue": "={{$json.headers.__method || 'PUT'}}", "rightValue": "PUT", "operator": { "type": "string", "operation": "equals" } }] } }
+          ]
+        },
+        "fallbackOutput": "eliminar"
+      }
+    },
+    {
+      "id": "sheets-menu-editar",
+      "name": "MENU - Editar producto",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [-760, 720],
+      "parameters": {
+        "documentId": { "mode": "list", "value": "REEMPLAZAR_CON_ID_DE_DELIVERYBOT_DB" },
+        "sheetName": { "mode": "name", "value": "MENU" },
+        "operation": "update",
+        "matchingColumns": ["id_producto"],
+        "columns": {
+          "value": {
+            "id_producto": "={{$json.params.id}}",
+            "nombre": "={{$json.body.nombre}}",
+            "precio": "={{$json.body.precio}}",
+            "categoria": "={{$json.body.categoria}}",
+            "stock": "={{$json.body.stock}}"
+          }
+        }
+      },
+      "credentials": { "googleSheetsOAuth2Api": { "name": "DeliveryBot Google Sheets" } }
+    },
+    {
+      "id": "sheets-menu-eliminar",
+      "name": "MENU - Eliminar producto",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [-760, 860],
+      "parameters": {
+        "documentId": { "mode": "list", "value": "REEMPLAZAR_CON_ID_DE_DELIVERYBOT_DB" },
+        "sheetName": { "mode": "name", "value": "MENU" },
+        "operation": "delete",
+        "matchingColumns": ["id_producto"],
+        "columns": { "value": { "id_producto": "={{$json.params.id}}" } }
+      },
+      "credentials": { "googleSheetsOAuth2Api": { "name": "DeliveryBot Google Sheets" } }
+    },
+    {
+      "id": "respond-menu-id",
+      "name": "Responder JSON (MENU/:id)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [-540, 780],
+      "parameters": { "respondWith": "noData", "options": { "responseCode": 204 } }
+    },
+    {
+      "id": "webhook-pedidos",
+      "name": "Webhook - /pedidos (GET)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-1200, 1040],
+      "parameters": { "path": "pedidos", "httpMethod": "GET", "responseMode": "responseNode" },
+      "notes": "Usado por comanda.html/admin.html (js/ventas.js) para listar los pedidos activos."
+    },
+    {
+      "id": "sheets-pedidos-listar",
+      "name": "PEDIDOS - Listar (para comanda/admin)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [-980, 1040],
+      "parameters": {
+        "documentId": { "mode": "list", "value": "REEMPLAZAR_CON_ID_DE_DELIVERYBOT_DB" },
+        "sheetName": { "mode": "name", "value": "PEDIDOS" },
+        "operation": "read"
+      },
+      "credentials": { "googleSheetsOAuth2Api": { "name": "DeliveryBot Google Sheets" } }
+    },
+    {
+      "id": "respond-pedidos",
+      "name": "Responder JSON (PEDIDOS)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [-760, 1040],
+      "parameters": { "respondWith": "allIncomingItems", "options": {} }
+    },
+    {
+      "id": "webhook-avanzar",
+      "name": "Webhook - /pedidos/:id/avanzar (POST)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-1200, 1220],
+      "parameters": { "path": "pedidos/:id/avanzar", "httpMethod": "POST", "responseMode": "responseNode" },
+      "notes": "Gestor de Estados: cocina cambia el estado desde comanda.html; este webhook actualiza Sheets y dispara la notificación push al cliente."
+    },
+    {
+      "id": "sheets-pedido-leer-uno",
+      "name": "PEDIDOS - Leer el pedido a avanzar",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [-980, 1220],
+      "parameters": {
+        "documentId": { "mode": "list", "value": "REEMPLAZAR_CON_ID_DE_DELIVERYBOT_DB" },
+        "sheetName": { "mode": "name", "value": "PEDIDOS" },
+        "operation": "lookup",
+        "lookupColumn": "id_pedido",
+        "lookupValue": "={{$json.params.id}}"
+      },
+      "credentials": { "googleSheetsOAuth2Api": { "name": "DeliveryBot Google Sheets" } }
+    },
+    {
+      "id": "if-estado-coincide",
+      "name": "¿El estado sigue siendo el esperado?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-760, 1220],
+      "parameters": {
+        "conditions": {
+          "conditions": [{
+            "leftValue": "={{$json.estado}}",
+            "rightValue": "={{$('Webhook - /pedidos/:id/avanzar (POST)').item.json.body.estado_esperado}}",
+            "operator": { "type": "string", "operation": "equals" }
+          }]
+        }
+      },
+      "notes": "Equivalente a la transacción que hacía Firebase: si otra persona ya movió el pedido, se rechaza en vez de pisar el cambio."
+    },
+    {
+      "id": "sheets-pedido-actualizar-estado",
+      "name": "PEDIDOS - Guardar nuevo estado",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [-540, 1140],
+      "parameters": {
+        "documentId": { "mode": "list", "value": "REEMPLAZAR_CON_ID_DE_DELIVERYBOT_DB" },
+        "sheetName": { "mode": "name", "value": "PEDIDOS" },
+        "operation": "update",
+        "matchingColumns": ["id_pedido"],
+        "columns": {
+          "value": {
+            "id_pedido": "={{$json.id_pedido}}",
+            "estado": "={{$('Webhook - /pedidos/:id/avanzar (POST)').item.json.body.estado_destino}}"
+          }
+        }
+      },
+      "credentials": { "googleSheetsOAuth2Api": { "name": "DeliveryBot Google Sheets" } }
+    },
+    {
+      "id": "fn-mensaje-estado",
+      "name": "Redactar mensaje de estado",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [-320, 1140],
+      "parameters": {
+        "functionCode": "const ETIQUETAS = { PENDING: 'Recibido', IN_PREPARATION: 'En preparación', ON_THE_WAY: 'En camino', DELIVERED: 'Entregado' };\nconst destino = $('Webhook - /pedidos/:id/avanzar (POST)').item.json.body.estado_destino;\nconst pedido = $('PEDIDOS - Leer el pedido a avanzar').item.json;\nreturn [{ json: {\n  telegram_id: pedido.id_usuario,\n  texto: '📦 Tu pedido ' + pedido.id_pedido + ' ahora está: ' + (ETIQUETAS[destino] || destino) + (destino === 'ON_THE_WAY' ? ' 🚴' : destino === 'DELIVERED' ? ' ✅' : '')\n}}];"
+      }
+    },
+    {
+      "id": "tg-notificar-estado",
+      "name": "Telegram - Notificar cambio de estado",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [-100, 1140],
+      "parameters": { "chatId": "={{$json.telegram_id}}", "text": "={{$json.texto}}" },
+      "credentials": { "telegramApi": { "name": "DeliveryBot Telegram" } },
+      "notes": "Optimiza la comunicación cocina-cliente: notificación push automática en cuanto cambia el estado, tal como pide la consigna."
+    },
+    {
+      "id": "respond-avanzar-ok",
+      "name": "Responder OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [120, 1140],
+      "parameters": { "respondWith": "json", "responseBody": "={{ { estado: $('Webhook - /pedidos/:id/avanzar (POST)').item.json.body.estado_destino } }}" }
+    },
+    {
+      "id": "respond-avanzar-conflicto",
+      "name": "Responder conflicto",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [-540, 1300],
+      "parameters": { "respondWith": "json", "responseBody": "={{ { conflicto: true } }}", "options": { "responseCode": 409 } }
+    },
+    {
+      "id": "cron-reporte-diario",
+      "name": "Cron - Reporte diario (fin del día)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-1200, 1500],
+      "parameters": { "rule": { "interval": [{ "field": "cronExpression", "expression": "0 22 * * *" }] } },
+      "notes": "Corre todos los días a las 22:00. Ajustar a la hora de cierre real de la cafetería."
+    },
+    {
+      "id": "sheets-pedidos-del-dia",
+      "name": "PEDIDOS - Leer todo para el reporte",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [-980, 1500],
+      "parameters": {
+        "documentId": { "mode": "list", "value": "REEMPLAZAR_CON_ID_DE_DELIVERYBOT_DB" },
+        "sheetName": { "mode": "name", "value": "PEDIDOS" },
+        "operation": "read"
+      },
+      "credentials": { "googleSheetsOAuth2Api": { "name": "DeliveryBot Google Sheets" } }
+    },
+    {
+      "id": "fn-calcular-reporte",
+      "name": "Calcular métricas del día",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [-760, 1500],
+      "parameters": {
+        "functionCode": "const hoy = new Date().toISOString().slice(0, 10);\nconst pedidosHoy = items.map(i => i.json).filter(p => p.fecha === hoy);\n\nconst totalVendido = pedidosHoy.reduce((s, p) => s + Number(p.total_pago || 0), 0);\n\nconst conteoProductos = {};\nconst conteoHoras = {};\nfor (const p of pedidosHoy) {\n  let detalle = [];\n  try { detalle = JSON.parse(p.detalles_pedido || '[]'); } catch (e) {}\n  for (const item of detalle) {\n    conteoProductos[item.nombre] = (conteoProductos[item.nombre] || 0) + Number(item.cantidad || 0);\n  }\n  const hora = String(p.hora || '00:00:00').slice(0, 2);\n  conteoHoras[hora] = (conteoHoras[hora] || 0) + 1;\n}\n\nfunction top(obj) {\n  const entradas = Object.entries(obj);\n  if (!entradas.length) return null;\n  return entradas.sort((a, b) => b[1] - a[1])[0][0];\n}\n\nreturn [{ json: {\n  fecha: hoy,\n  total_pedidos: pedidosHoy.length,\n  total_vendido: totalVendido,\n  producto_estrella: top(conteoProductos) || 'Sin datos',\n  hora_pico: top(conteoHoras) ? (top(conteoHoras) + ':00') : 'Sin datos'\n}}];"
+      },
+      "notes": "Inteligencia de Negocio: total vendido, producto estrella y hora pico, calculados directo de PEDIDOS."
+    },
+    {
+      "id": "sheets-guardar-reporte",
+      "name": "REPORTES - Guardar métricas del día",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [-540, 1500],
+      "parameters": {
+        "documentId": { "mode": "list", "value": "REEMPLAZAR_CON_ID_DE_DELIVERYBOT_DB" },
+        "sheetName": { "mode": "name", "value": "REPORTES" },
+        "operation": "append",
+        "columns": {
+          "value": {
+            "fecha": "={{$json.fecha}}",
+            "total_pedidos": "={{$json.total_pedidos}}",
+            "total_vendido": "={{$json.total_vendido}}",
+            "producto_estrella": "={{$json.producto_estrella}}",
+            "hora_pico": "={{$json.hora_pico}}"
+          }
+        }
+      },
+      "credentials": { "googleSheetsOAuth2Api": { "name": "DeliveryBot Google Sheets" } },
+      "notes": "Hoja REPORTES: no la pide el enunciado de forma explícita, pero deja historial de cada reporte diario en vez de solo mandarlo por chat."
+    },
+    {
+      "id": "tg-enviar-reporte",
+      "name": "Telegram - Enviar reporte al administrador",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [-320, 1500],
+      "parameters": {
+        "chatId": "={{$env.TELEGRAM_CHAT_ID_ADMIN}}",
+        "text": "=📊 Reporte del {{$json.fecha}}\nPedidos: {{$json.total_pedidos}}\nTotal vendido: ${{$json.total_vendido}}\nProducto estrella: {{$json.producto_estrella}}\nHora pico: {{$json.hora_pico}}"
+      },
+      "credentials": { "telegramApi": { "name": "DeliveryBot Telegram" } }
+    }
+  ],
+  "connections": {
+    "Telegram - Mensaje entrante": { "main": [[{ "node": "Router de sesión", "type": "main", "index": 0 }]] },
+    "Router de sesión": { "main": [[{ "node": "SESSIONS - Leer sesión actual", "type": "main", "index": 0 }]] },
+    "SESSIONS - Leer sesión actual": { "main": [[{ "node": "¿Comando o continuación?", "type": "main", "index": 0 }]] },
+    "¿Comando o continuación?": {
+      "main": [
+        [{ "node": "MENU - Leer categorías", "type": "main", "index": 0 }],
+        [{ "node": "MENU - Leer categorías", "type": "main", "index": 0 }],
+        [{ "node": "MENU - Leer categorías", "type": "main", "index": 0 }],
+        [{ "node": "Wizard - siguiente paso", "type": "main", "index": 0 }]
+      ]
+    },
+    "MENU - Leer categorías": { "main": [[{ "node": "Armar teclado de categorías", "type": "main", "index": 0 }]] },
+    "Armar teclado de categorías": { "main": [[{ "node": "SESSIONS - Guardar pantalla CATEGORIA", "type": "main", "index": 0 }]] },
+    "SESSIONS - Guardar pantalla CATEGORIA": { "main": [[{ "node": "Telegram - Enviar categorías", "type": "main", "index": 0 }]] },
+    "Wizard - siguiente paso": { "main": [[{ "node": "¿Confirmó el pedido?", "type": "main", "index": 0 }]] },
+    "¿Confirmó el pedido?": {
+      "main": [
+        [{ "node": "MENU - Leer para validar stock/precio", "type": "main", "index": 0 }],
+        [{ "node": "SESSIONS - Guardar avance del wizard", "type": "main", "index": 0 }]
+      ]
+    },
+    "SESSIONS - Guardar avance del wizard": { "main": [[{ "node": "Telegram - Responder paso del wizard", "type": "main", "index": 0 }]] },
+    "MENU - Leer para validar stock/precio": { "main": [[{ "node": "Validar stock y calcular total", "type": "main", "index": 0 }]] },
+    "Validar stock y calcular total": { "main": [[{ "node": "¿Stock suficiente?", "type": "main", "index": 0 }]] },
+    "¿Stock suficiente?": {
+      "main": [
+        [{ "node": "PEDIDOS - Crear registro", "type": "main", "index": 0 }, { "node": "USUARIOS - Registrar/actualizar cliente", "type": "main", "index": 0 }],
+        [{ "node": "Telegram - Avisar sin stock", "type": "main", "index": 0 }]
+      ]
+    },
+    "PEDIDOS - Crear registro": { "main": [[{ "node": "Calcular nuevo stock por producto", "type": "main", "index": 0 }]] },
+    "Calcular nuevo stock por producto": { "main": [[{ "node": "MENU - Descontar stock vendido", "type": "main", "index": 0 }]] },
+    "USUARIOS - Registrar/actualizar cliente": { "main": [[{ "node": "Telegram - Confirmar al cliente", "type": "main", "index": 0 }]] },
+    "Telegram - Confirmar al cliente": { "main": [[{ "node": "Telegram - Notificar a cocina", "type": "main", "index": 0 }]] },
+    "Webhook - /menu (GET/POST)": { "main": [[{ "node": "¿Qué operación de MENU?", "type": "main", "index": 0 }]] },
+    "¿Qué operación de MENU?": {
+      "main": [
+        [{ "node": "MENU - Listar (para la webapp)", "type": "main", "index": 0 }],
+        [{ "node": "MENU - Crear producto (webapp)", "type": "main", "index": 0 }]
+      ]
+    },
+    "MENU - Listar (para la webapp)": { "main": [[{ "node": "Responder JSON (MENU)", "type": "main", "index": 0 }]] },
+    "MENU - Crear producto (webapp)": { "main": [[{ "node": "Responder JSON (MENU)", "type": "main", "index": 0 }]] },
+    "Webhook - /menu/:id (PUT/DELETE)": { "main": [[{ "node": "¿Editar o eliminar?", "type": "main", "index": 0 }]] },
+    "¿Editar o eliminar?": {
+      "main": [
+        [{ "node": "MENU - Editar producto", "type": "main", "index": 0 }],
+        [{ "node": "MENU - Eliminar producto", "type": "main", "index": 0 }]
+      ]
+    },
+    "MENU - Editar producto": { "main": [[{ "node": "Responder JSON (MENU/:id)", "type": "main", "index": 0 }]] },
+    "MENU - Eliminar producto": { "main": [[{ "node": "Responder JSON (MENU/:id)", "type": "main", "index": 0 }]] },
+    "Webhook - /pedidos (GET)": { "main": [[{ "node": "PEDIDOS - Listar (para comanda/admin)", "type": "main", "index": 0 }]] },
+    "PEDIDOS - Listar (para comanda/admin)": { "main": [[{ "node": "Responder JSON (PEDIDOS)", "type": "main", "index": 0 }]] },
+    "Webhook - /pedidos/:id/avanzar (POST)": { "main": [[{ "node": "PEDIDOS - Leer el pedido a avanzar", "type": "main", "index": 0 }]] },
+    "PEDIDOS - Leer el pedido a avanzar": { "main": [[{ "node": "¿El estado sigue siendo el esperado?", "type": "main", "index": 0 }]] },
+    "¿El estado sigue siendo el esperado?": {
+      "main": [
+        [{ "node": "PEDIDOS - Guardar nuevo estado", "type": "main", "index": 0 }],
+        [{ "node": "Responder conflicto", "type": "main", "index": 0 }]
+      ]
+    },
+    "PEDIDOS - Guardar nuevo estado": { "main": [[{ "node": "Redactar mensaje de estado", "type": "main", "index": 0 }]] },
+    "Redactar mensaje de estado": { "main": [[{ "node": "Telegram - Notificar cambio de estado", "type": "main", "index": 0 }]] },
+    "Telegram - Notificar cambio de estado": { "main": [[{ "node": "Responder OK", "type": "main", "index": 0 }]] },
+    "Cron - Reporte diario (fin del día)": { "main": [[{ "node": "PEDIDOS - Leer todo para el reporte", "type": "main", "index": 0 }]] },
+    "PEDIDOS - Leer todo para el reporte": { "main": [[{ "node": "Calcular métricas del día", "type": "main", "index": 0 }]] },
+    "Calcular métricas del día": { "main": [[{ "node": "REPORTES - Guardar métricas del día", "type": "main", "index": 0 }]] },
+    "REPORTES - Guardar métricas del día": { "main": [[{ "node": "Telegram - Enviar reporte al administrador", "type": "main", "index": 0 }]] }
+  }
+}

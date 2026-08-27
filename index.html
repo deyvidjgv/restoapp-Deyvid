@@ -12,7 +12,6 @@
 <header class="barra">
     <a href="index.html" class="marca">Resto<span>App</span></a>
     <nav>
-        <a href="pedido.html" data-nav="pedido">Menú</a>
         <a href="comanda.html" data-nav="comanda">Comanda</a>
         <a href="admin.html" data-nav="admin">Panel administrativo</a>
     </nav>
@@ -23,11 +22,11 @@
 </header>
 
 <div class="centrado">
-    <h1>RestoApp</h1>
-    <p class="subtitulo">Consulta el menú y haz tu pedido, o entra al panel para gestionar los platos.</p>
+    <h1>DeliveryBot</h1>
+    <p class="subtitulo">Pide desde Telegram y sigue tu pedido en tiempo real, o entra al panel para gestionar cocina y menú.</p>
 
     <div class="accesos">
-        <a href="pedido.html">Hacer un pedido</a>
+        <a id="botLink" href="#" target="_blank" rel="noopener">Hacer un pedido por Telegram</a>
         <a href="login.html">Administrar menú</a>
     </div>
 </div>
@@ -36,8 +35,10 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
+<script src="js/n8n-config.js"></script>
 <script src="js/comun.js"></script>
 <script src="js/auth.js"></script>
+<script>document.getElementById('botLink').href = TELEGRAM_BOT_URL;</script>
 
 </body>
 </html>
