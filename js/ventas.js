@@ -2,8 +2,8 @@
 //
 // Los pedidos los crea el bot de Telegram (a través de n8n), no la webapp:
 // este módulo solo lee la lista para comanda.html/admin.html y hace avanzar
-// el estado, todo contra los webhooks del workflow "API Webapp"
-// (ver n8n/deliverybot-workflow.json). n8n es quien de verdad lee/escribe en
+// el estado, todo contra los webhooks del workflow de n8n (ver
+// GUIA_EQUIPO.md, pasos 6 y 7). n8n es quien de verdad lee/escribe en
 // Google Sheets y quien envía la notificación push al cliente por Telegram
 // cuando el estado cambia.
 //

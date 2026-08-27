@@ -48,14 +48,17 @@ adicional para el personal.
 
 ### 2. n8n
 
-1. Importar `n8n/deliverybot-workflow.json` (Workflows → Import from File).
-2. Configurar las credenciales que el workflow espera:
+El workflow se arma a mano en el editor de n8n siguiendo el flujo descrito
+más abajo ("Flujo 'Realizar Pedido'"); no se entrega un JSON prearmado a
+propósito, para que quede claro qué hace cada nodo.
+
+1. Crear las credenciales que el workflow va a usar:
    - `DeliveryBot Telegram` (Telegram API, con el token del bot de
      [@BotFather](https://t.me/BotFather)).
    - `DeliveryBot Google Sheets` (Google Sheets OAuth2, o cuenta de servicio).
-3. En cada nodo de Google Sheets, reemplazar
-   `REEMPLAZAR_CON_ID_DE_DELIVERYBOT_DB` por el ID real de la hoja de cálculo.
-4. Configurar las variables de entorno de n8n:
+2. En cada nodo de Google Sheets del workflow, usar el ID real de
+   `DeliveryBot_DB` (el que está en la URL de la hoja).
+3. Configurar las variables de entorno de n8n:
    - `TELEGRAM_CHAT_ID_COCINA`: chat/grupo de Telegram del personal de cocina.
    - `TELEGRAM_CHAT_ID_ADMIN`: chat de Telegram donde llega el reporte diario.
 5. Activar el workflow. Los webhooks quedan disponibles en
@@ -198,5 +201,6 @@ una notificación push al cliente.
 
 - Repositorio: este mismo repo.
 - Documentación técnica: este `README.md`.
-- Workflow de n8n: `n8n/deliverybot-workflow.json`.
+- Workflow de n8n: exportar desde n8n (Workflows → Download) una vez armado
+  y probado, y adjuntarlo como `n8n/deliverybot-workflow.json`.
 - Datos de prueba para Google Sheets: `sheets/*.csv`.

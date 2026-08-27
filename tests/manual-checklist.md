@@ -8,11 +8,10 @@ Proyecto con dos partes que se prueban distinto:
   que antes, abriendo cada página con un servidor local (Live Server,
   `python3 -m http.server`), nunca con `file://`.
 
-Requisitos previos: workflow `n8n/deliverybot-workflow.json` importado y
-activo, `N8N_BASE_URL`/`TELEGRAM_BOT_URL` configurados en
-`js/n8n-config.js`, hoja `DeliveryBot_DB` con las 5 hojas creadas, y una
-cuenta de administrador creada desde Firebase Console (solo para el login de
-la webapp).
+Requisitos previos: workflow de n8n armado y activo (ver `GUIA_EQUIPO.md`),
+`N8N_BASE_URL`/`TELEGRAM_BOT_URL` configurados en `js/n8n-config.js`, hoja
+`DeliveryBot_DB` con las 5 hojas creadas, y una cuenta de administrador
+creada desde Firebase Console (solo para el login de la webapp).
 
 ## Bot de Telegram — flujo de pedido
 

@@ -2,7 +2,7 @@
 //
 // Forma de cada producto: { id, name, price, category, stock }
 // n8n es el único que habla con Google Sheets: este módulo solo llama a los
-// webhooks expuestos por el workflow "API Webapp" (ver n8n/deliverybot-workflow.json).
+// webhooks expuestos por el workflow de n8n (ver GUIA_EQUIPO.md, paso 7).
 //
 // La hoja MENU no tiene "tiempo real" nativo como Firebase, así que la
 // lectura se hace por sondeo (polling) cada POLL_MS.
