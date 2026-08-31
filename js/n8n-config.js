@@ -7,7 +7,8 @@
 //
 // Reemplazar N8N_BASE_URL por la URL pública de la instancia de n8n
 // (ej: "https://tu-instancia.app.n8n.cloud/webhook").
-var N8N_BASE_URL = 'https://TU-INSTANCIA-N8N.app.n8n.cloud/webhook';
+var N8N_BASE_URL = 'https://deyvidjgv12.app.n8n.cloud/webhook';
 
 // Enlace público del bot: los clientes hacen su pedido ahí, no en la web.
-var TELEGRAM_BOT_URL = 'https://t.me/TU_BOT_DE_TELEGRAM';
+var DISCORD_BOT_URL =
+  'https://discord.com/oauth2/authorize?client_id=1543039767850131576&permissions=2147486720&integration_type=0&scope=applications.commands+bot';

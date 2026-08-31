@@ -1,3 +1,3 @@
-id_pedido,id_usuario,detalles_pedido,total_pago,estado,fecha,hora
+id_pedido,discord_id,detalles_pedido,total_pago,estado,fecha,hora
 PED-1000,111111111,"[{""product_id"":""PROD-001"",""nombre"":""Café americano"",""cantidad"":1,""precio_unitario"":4000,""subtotal_linea"":4000},{""product_id"":""PROD-004"",""nombre"":""Empanada de pollo"",""cantidad"":2,""precio_unitario"":3000,""subtotal_linea"":6000}]",10000,DELIVERED,2026-08-26,08:15:00
 PED-1001,222222222,"[{""product_id"":""PROD-006"",""nombre"":""Almuerzo del día"",""cantidad"":1,""precio_unitario"":15000,""subtotal_linea"":15000}]",15000,ON_THE_WAY,2026-08-27,12:05:00

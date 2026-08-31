@@ -4,13 +4,13 @@
 // este módulo solo lee la lista para comanda.html/admin.html y hace avanzar
 // el estado, todo contra los webhooks del workflow de n8n (ver
 // GUIA_EQUIPO.md, pasos 6 y 7). n8n es quien de verdad lee/escribe en
-// Google Sheets y quien envía la notificación push al cliente por Telegram
+// Google Sheets y quien envía la notificación push al cliente por Discord
 // cuando el estado cambia.
 //
 // Forma de cada pedido, tal como la entrega n8n:
 //
 //   {
-//     id, telegram_id, nombre_cliente, detalle_pedido: [ { product_id, nombre,
+//     id, discord_id, nombre_cliente, detalle_pedido: [ { product_id, nombre,
 //     cantidad, precio_unitario, subtotal_linea } ],
 //     total, estado, fecha, hora
 //   }
@@ -94,7 +94,7 @@
 
         return {
             id: String(val.id_pedido || val.id || ''),
-            telegram_id: String(val.telegram_id || ''),
+            discord_id: String(val.discord_id || val.telegram_id || ''),
             mesero: String(val.nombre_cliente || val.mesero || ''),
             tipo_pedido: TIPOS[val.tipo_pedido] ? val.tipo_pedido : 'DOMICILIO',
             mesa_id: val.mesa_id === 0 || val.mesa_id ? val.mesa_id : '',
@@ -113,7 +113,7 @@
 
     // Avanza un pedido al estado siguiente. n8n valida en el servidor que
     // nadie más lo haya movido antes (equivalente a la transacción que hacía
-    // Firebase) y envía la notificación push a Telegram si el cambio se
+    // Firebase) y envía la notificación push a Discord si el cambio se
     // aplicó.
     function avanzar(id, estadoEsperado) {
         var destino = siguiente(estadoEsperado);
